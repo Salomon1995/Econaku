@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 
 const express = require('express');
@@ -67,6 +66,20 @@ function soloAdministrador(req, res, next) {
 app.get('/api', (req, res) => {
     res.json({
         mensaje: 'API de Misantla-Dex funcionando'
+    });
+});
+
+app.get('/api/admin/prueba', soloAdministrador, (req, res) => {
+    res.json({
+        mensaje: 'Acceso autorizado al administrador',
+        usuario: req.session.usuario.nombre_usuario
+    });
+});
+
+app.get('/api/admin/prueba', soloAdministrador, (req, res) => {
+    res.json({
+        mensaje: 'Acceso autorizado al administrador',
+        usuario: req.session.usuario.nombre_usuario
     });
 });
 
