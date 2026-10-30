@@ -848,14 +848,11 @@ const rareSpeciesList = [
       zone.addEventListener('mouseleave', () => tooltip.style.display = 'none');
 
       zone.addEventListener('click', () => {
-        zones.forEach(z => z.classList.remove('active'));
-        zone.classList.add('active');
-        currentHabitatKey = zone.id;
-        selectHabitat(zone.id);
+         zones.forEach(z => z.classList.remove('active'));
+         zone.classList.add('active');
 
-        if (Math.random() < 0.35) {
-          triggerWildEncounter();
-        }
+         currentHabitatKey = zone.id;
+         selectHabitat(zone.id);
       });
     });
 
