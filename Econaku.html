@@ -853,33 +853,18 @@ const rareSpeciesList = [
 
          currentHabitatKey = zone.id;
          selectHabitat(zone.id);
-      });
+});
     });
 
     
     function selectHabitat(habitatKey) {
-    const habitatAPI = habitatsDesdeAPI[habitatKey];
-    const habitatLocal = database[habitatKey];
+          currentHabitat = habitatsDesdeAPI[habitatKey] || database[habitatKey];
 
-    // Usar los datos de la API solamente si contienen especies.
-    if (
-        habitatAPI &&
-        Array.isArray(habitatAPI.species) &&
-        habitatAPI.species.length > 0
-    ) {
-        currentHabitat = habitatAPI;
-    } else {
-        currentHabitat = habitatLocal;
+          document.getElementById('habitat-title').innerText = currentHabitat.title;
+          document.getElementById('habitat-desc').innerText = currentHabitat.description;
+
+          renderSpecies();
     }
-
-    document.getElementById('habitat-title').innerText =
-        currentHabitat.title;
-
-    document.getElementById('habitat-desc').innerText =
-        currentHabitat.description;
-
-    renderSpecies();
-}
 
 
     function renderSpecies() {
@@ -1230,10 +1215,13 @@ async function probarCargaAPI() {
 
         const especies = await respuestaEspecies.json();
 
+        if (!Array.isArray(habitats) || !Array.isArray(especies) || especies.length === 0) {
+            throw new Error('La API no devolvió hábitats o especies válidos.');
+        }
+
         const especiesAdaptadas = especies.map(adaptarEspecie);
         const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
 
-        // Relacionar los ID de la base de datos con las zonas del mapa.
         const clavesHabitat = {
             1: 'sierra',
             2: 'rio',
@@ -1241,38 +1229,51 @@ async function probarCargaAPI() {
             4: 'cafetales'
         };
 
-        habitatsDesdeAPI = {};
+        const nuevosHabitats = {};
 
         habitats.forEach(habitat => {
             const clave = clavesHabitat[Number(habitat.id_habitat)];
 
-            if (clave) {
-                habitatsDesdeAPI[clave] = adaptarHabitat(
-                    habitat,
-                    especiesPorHabitat
-                );
+            if (!clave) return;
+
+            const habitatAPI = adaptarHabitat(habitat, especiesPorHabitat);
+
+            // Si la API no trae especies para este hábitat,
+            // conservar las especies locales.
+            if (habitatAPI.species.length === 0) {
+                habitatAPI.species = database[clave].species;
             }
+
+            nuevosHabitats[clave] = habitatAPI;
         });
 
-        // Seleccionar el primer hábitat después de terminar la carga.
-        currentFilter = 'all';
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.classList.remove('active');
+        // No sustituir los datos actuales si la respuesta está incompleta.
+        if (Object.keys(nuevosHabitats).length === 0) {
+            throw new Error('No se pudieron relacionar los hábitats recibidos.');
+        }
+
+        habitatsDesdeAPI = nuevosHabitats;
+
+        selectHabitat(currentHabitatKey);
+
+        zones.forEach(zone => {
+            zone.classList.toggle('active', zone.id === currentHabitatKey);
         });
-        document.querySelector('.filter-btn').classList.add('active');
-
-        selectHabitat('sierra');
-
-        zones.forEach(zone => zone.classList.remove('active'));
-        document.getElementById('sierra').classList.add('active');
 
         console.log('Datos de Econaku cargados correctamente.');
 
     } catch (error) {
         console.error('Error al cargar los datos de Econaku:', error);
+
+        // Mantener disponibles las especies locales.
+        selectHabitat(currentHabitatKey);
     }
 }
 
+// Mostrar primero las especies locales.
+renderSpecies();
+
+// Después actualizar con los datos de la API.
 probarCargaAPI();
     
 async function registrarUsuario() {
