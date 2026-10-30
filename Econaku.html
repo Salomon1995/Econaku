@@ -858,13 +858,28 @@ const rareSpeciesList = [
 
     
     function selectHabitat(habitatKey) {
-          currentHabitat = habitatsDesdeAPI[habitatKey] || database[habitatKey];
+    const habitatAPI = habitatsDesdeAPI[habitatKey];
+    const habitatLocal = database[habitatKey];
 
-          document.getElementById('habitat-title').innerText = currentHabitat.title;
-          document.getElementById('habitat-desc').innerText = currentHabitat.description;
-
-          renderSpecies();
+    // Usar los datos de la API solamente si contienen especies.
+    if (
+        habitatAPI &&
+        Array.isArray(habitatAPI.species) &&
+        habitatAPI.species.length > 0
+    ) {
+        currentHabitat = habitatAPI;
+    } else {
+        currentHabitat = habitatLocal;
     }
+
+    document.getElementById('habitat-title').innerText =
+        currentHabitat.title;
+
+    document.getElementById('habitat-desc').innerText =
+        currentHabitat.description;
+
+    renderSpecies();
+}
 
 
     function renderSpecies() {
