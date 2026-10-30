@@ -1158,42 +1158,46 @@ const rareSpeciesList = [
     }
     async function probarCargaAPI() {
     try {
-        const respuestaHabitats = await fetch(API_URL + '/api/habitats');
+        const respuestaHabitats = await fetch(API_URL + '/api/habitats', {
+            credentials: 'include'
+        });
+
+        if (!respuestaHabitats.ok) {
+            throw new Error('Error al cargar hábitats: ' + respuestaHabitats.status);
+        }
+
         const habitats = await respuestaHabitats.json();
 
-        const respuestaEspecies = await fetch(API_URL + '/api/especies');
+        const respuestaEspecies = await fetch(API_URL + '/api/especies', {
+            credentials: 'include'
+        });
+
+        if (!respuestaEspecies.ok) {
+            throw new Error('Error al cargar especies: ' + respuestaEspecies.status);
+        }
+
         const especies = await respuestaEspecies.json();
-	const especiesAdaptadas = especies.map(adaptarEspecie);
-        console.table(especiesAdaptadas.slice(0, 3));
+
+        const especiesAdaptadas = especies.map(adaptarEspecie);
         const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
+
         const habitatsAdaptados = habitats.map(habitat =>
-                 adaptarHabitat(habitat, especiesPorHabitat)
+            adaptarHabitat(habitat, especiesPorHabitat)
         );
 
-	habitatsAdaptados.forEach((habitat, indice) => {
-    		habitatsDesdeAPI[habitats[indice].codigo] = habitat;
-	});
+        habitatsAdaptados.forEach((habitat, indice) => {
+            habitatsDesdeAPI[habitats[indice].codigo] = habitat;
+        });
 
-        console.log('Hábitats adaptados:', habitatsAdaptados);
-        console.log('Especies del primer hábitat:', habitatsAdaptados[0].species);
+        console.log('Hábitats adaptados:', habitatsDesdeAPI);
+        console.log('Especies agrupadas:', especiesPorHabitat);
 
-        console.log('Especies agrupadas por hábitat:', especiesPorHabitat);
-        console.log('Especies de la Sierra:', especiesPorHabitat[1]);
+        selectHabitat('sierra');
 
-        console.log('Hábitats recibidos:', habitats);
-	console.log('Primer hábitat:', habitats[0]);
-	console.log('Primeras especies:', especies.slice(0, 3));
-	console.log('Datos de la primera especie:', especies[0]);
-	console.table(especies.slice(0, 3));
-        console.log('Especies recibidas:', especies);
-        console.log('Total de hábitats:', habitats.length);
-        console.log('Total de especies:', especies.length);
-	console.log('Especies que usa el juego para la Sierra:', habitatsDesdeAPI.sierra?.species);
-	selectHabitat('sierra');
         document.getElementById('sierra').classList.add('active');
 
     } catch (error) {
-        console.error('Error al conectar con la API:', error);
+        console.error('Error al cargar los datos de Econaku:', error);
     }
 }
 
