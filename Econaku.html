@@ -1214,6 +1214,12 @@ async function probarCargaAPI() {
         }
 
         const especies = await respuestaEspecies.json();
+        console.log('IMÁGENES RECIBIDAS DE LA API:',
+           especies.map(e => ({
+              nombre: e.nombre,
+             imagen_url: e.imagen_url
+           }))
+       );
 
         if (!Array.isArray(habitats) || !Array.isArray(especies) || especies.length === 0) {
             throw new Error('La API no devolvió hábitats o especies válidos.');
@@ -1221,6 +1227,10 @@ async function probarCargaAPI() {
 
         const especiesAdaptadas = especies.map(adaptarEspecie);
         const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
+        console.log('CLAVES DE AGRUPACIÓN:', Object.keys(especiesPorHabitat));
+        console.log('CONTENIDO DE AGRUPACIÓN:', especiesPorHabitat);
+	console.log('PRIMERA ESPECIE ADAPTADA:', especiesAdaptadas[0]);
+	console.log('HÁBITATS DE LA PRIMERA ESPECIE:', especiesAdaptadas[0]?.habitatsId);
 
         const clavesHabitat = {
             1: 'sierra',

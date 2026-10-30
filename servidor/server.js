@@ -2,6 +2,17 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+
+const origenesPermitidos = [
+    'https://econaku.pages.dev',
+    'http://localhost:8000'
+];
+
+app.use(cors({
+    origin: origenesPermitidos,
+    credentials: true
+}));
+
 const app = express();
 app.set('trust proxy', 1);
 const mysql = require('mysql2/promise');
