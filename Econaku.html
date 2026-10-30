@@ -1203,7 +1203,9 @@ function adaptarEspecie(especie) {
     return {
         id: especie.codigo,
         id_especie: especie.id_especie,
-        habitatId: especie.id_habitat,
+        habitatIds: (especie.habitats || []).map(habitat =>
+            Number(habitat.id_habitat)
+        ),
         name: especie.nombre,
         scientific: especie.nombre_cientifico,
         category: especie.categoria,
@@ -1216,18 +1218,17 @@ function agruparEspeciesPorHabitat(especiesAdaptadas) {
     const grupos = {};
 
     especiesAdaptadas.forEach(especie => {
-        const id = especie.habitatId;
+        especie.habitatIds.forEach(id => {
+            if (!grupos[id]) {
+                grupos[id] = [];
+            }
 
-        if (!grupos[id]) {
-            grupos[id] = [];
-        }
-
-        grupos[id].push(especie);
+            grupos[id].push(especie);
+        });
     });
 
     return grupos;
 }
-
 
 function adaptarHabitat(habitat, especiesPorHabitat) {
     return {
