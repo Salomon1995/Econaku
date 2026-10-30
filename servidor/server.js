@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const app = express();
+
 const origenesPermitidos = [
     'https://econaku.pages.dev',
     'http://localhost:8000'
@@ -12,8 +14,6 @@ app.use(cors({
     origin: origenesPermitidos,
     credentials: true
 }));
-
-const app = express();
 app.set('trust proxy', 1);
 const mysql = require('mysql2/promise');
 const fs = require('fs');
@@ -44,12 +44,6 @@ const pool = {
 };
 const PUERTO = process.env.PORT || 3000;
 
-
-app.use(cors({
-    origin: 'https://econaku.pages.dev',
-    credentials: true
-}));
-
 app.use(express.json());
 
 app.use(session({
@@ -77,13 +71,6 @@ function soloAdministrador(req, res, next) {
 app.get('/api', (req, res) => {
     res.json({
         mensaje: 'API de Misantla-Dex funcionando'
-    });
-});
-
-app.get('/api/admin/prueba', soloAdministrador, (req, res) => {
-    res.json({
-        mensaje: 'Acceso autorizado al administrador',
-        usuario: req.session.usuario.nombre_usuario
     });
 });
 
