@@ -1,3 +1,4 @@
+Este archivo es el ultimo antes de que empezaran los errores
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -848,12 +849,15 @@ const rareSpeciesList = [
       zone.addEventListener('mouseleave', () => tooltip.style.display = 'none');
 
       zone.addEventListener('click', () => {
-         zones.forEach(z => z.classList.remove('active'));
-         zone.classList.add('active');
+        zones.forEach(z => z.classList.remove('active'));
+        zone.classList.add('active');
+        currentHabitatKey = zone.id;
+        selectHabitat(zone.id);
 
-         currentHabitatKey = zone.id;
-         selectHabitat(zone.id);
-});
+        if (Math.random() < 0.35) {
+          triggerWildEncounter();
+        }
+      });
     });
 
     
@@ -1153,13 +1157,54 @@ const rareSpeciesList = [
       const count = rareSpeciesList.filter(i => i.discovered).length;
       document.getElementById('discovered-count').innerText = count;
     }
-    function adaptarEspecie(especie) {
+    async function probarCargaAPI() {
+    try {
+        const respuestaHabitats = await fetch(API_URL + '/api/habitats');
+        const habitats = await respuestaHabitats.json();
+
+        const respuestaEspecies = await fetch(API_URL + '/api/especies');
+        const especies = await respuestaEspecies.json();
+	const especiesAdaptadas = especies.map(adaptarEspecie);
+        console.table(especiesAdaptadas.slice(0, 3));
+        const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
+        const habitatsAdaptados = habitats.map(habitat =>
+                 adaptarHabitat(habitat, especiesPorHabitat)
+        );
+
+	habitatsAdaptados.forEach((habitat, indice) => {
+    		habitatsDesdeAPI[habitats[indice].codigo] = habitat;
+	});
+
+        console.log('Hábitats adaptados:', habitatsAdaptados);
+        console.log('Especies del primer hábitat:', habitatsAdaptados[0].species);
+
+        console.log('Especies agrupadas por hábitat:', especiesPorHabitat);
+        console.log('Especies de la Sierra:', especiesPorHabitat[1]);
+
+        console.log('Hábitats recibidos:', habitats);
+	console.log('Primer hábitat:', habitats[0]);
+	console.log('Primeras especies:', especies.slice(0, 3));
+	console.log('Datos de la primera especie:', especies[0]);
+	console.table(especies.slice(0, 3));
+        console.log('Especies recibidas:', especies);
+        console.log('Total de hábitats:', habitats.length);
+        console.log('Total de especies:', especies.length);
+	console.log('Especies que usa el juego para la Sierra:', habitatsDesdeAPI.sierra?.species);
+	selectHabitat('sierra');
+        document.getElementById('sierra').classList.add('active');
+
+    } catch (error) {
+        console.error('Error al conectar con la API:', error);
+    }
+}
+
+probarCargaAPI();
+
+function adaptarEspecie(especie) {
     return {
         id: especie.codigo,
         id_especie: especie.id_especie,
-        habitatsId: (especie.habitats || []).map(
-            habitat => Number(habitat.id_habitat)
-        ),
+        habitatId: especie.id_habitat,
         name: especie.nombre,
         scientific: especie.nombre_cientifico,
         category: especie.categoria,
@@ -1172,119 +1217,30 @@ function agruparEspeciesPorHabitat(especiesAdaptadas) {
     const grupos = {};
 
     especiesAdaptadas.forEach(especie => {
-        especie.habitatsId.forEach(idHabitat => {
-            if (!grupos[idHabitat]) {
-                grupos[idHabitat] = [];
-            }
+        const id = especie.habitatId;
 
-            grupos[idHabitat].push(especie);
-        });
+        if (!grupos[id]) {
+            grupos[id] = [];
+        }
+
+        grupos[id].push(especie);
     });
 
     return grupos;
 }
+
 
 function adaptarHabitat(habitat, especiesPorHabitat) {
     return {
         title: habitat.nombre,
         description: habitat.descripcion,
         bgImage: habitat.imagen_fondo,
-        species: especiesPorHabitat[Number(habitat.id_habitat)] || []
+        species: especiesPorHabitat[habitat.id_habitat] || []
     };
 }
 
-async function probarCargaAPI() {
-    try {
-        const respuestaHabitats = await fetch(API_URL + '/api/habitats', {
-            credentials: 'include'
-        });
-
-        if (!respuestaHabitats.ok) {
-            throw new Error('Error al cargar hábitats: ' + respuestaHabitats.status);
-        }
-
-        const habitats = await respuestaHabitats.json();
-
-        const respuestaEspecies = await fetch(API_URL + '/api/especies', {
-            credentials: 'include'
-        });
-
-        if (!respuestaEspecies.ok) {
-            throw new Error('Error al cargar especies: ' + respuestaEspecies.status);
-        }
-
-        const especies = await respuestaEspecies.json();
-        console.log('IMÁGENES RECIBIDAS DE LA API:',
-           especies.map(e => ({
-              nombre: e.nombre,
-             imagen_url: e.imagen_url
-           }))
-       );
-
-        if (!Array.isArray(habitats) || !Array.isArray(especies) || especies.length === 0) {
-            throw new Error('La API no devolvió hábitats o especies válidos.');
-        }
-
-        const especiesAdaptadas = especies.map(adaptarEspecie);
-        const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
-        console.log('CLAVES DE AGRUPACIÓN:', Object.keys(especiesPorHabitat));
-        console.log('CONTENIDO DE AGRUPACIÓN:', especiesPorHabitat);
-	console.log('PRIMERA ESPECIE ADAPTADA:', especiesAdaptadas[0]);
-	console.log('HÁBITATS DE LA PRIMERA ESPECIE:', especiesAdaptadas[0]?.habitatsId);
-
-        const clavesHabitat = {
-            1: 'sierra',
-            2: 'rio',
-            3: 'canadas',
-            4: 'cafetales'
-        };
-
-        const nuevosHabitats = {};
-
-        habitats.forEach(habitat => {
-            const clave = clavesHabitat[Number(habitat.id_habitat)];
-
-            if (!clave) return;
-
-            const habitatAPI = adaptarHabitat(habitat, especiesPorHabitat);
-
-            // Si la API no trae especies para este hábitat,
-            // conservar las especies locales.
-            if (habitatAPI.species.length === 0) {
-                habitatAPI.species = database[clave].species;
-            }
-
-            nuevosHabitats[clave] = habitatAPI;
-        });
-
-        // No sustituir los datos actuales si la respuesta está incompleta.
-        if (Object.keys(nuevosHabitats).length === 0) {
-            throw new Error('No se pudieron relacionar los hábitats recibidos.');
-        }
-
-        habitatsDesdeAPI = nuevosHabitats;
-
-        selectHabitat(currentHabitatKey);
-
-        zones.forEach(zone => {
-            zone.classList.toggle('active', zone.id === currentHabitatKey);
-        });
-
-        console.log('Datos de Econaku cargados correctamente.');
-
-    } catch (error) {
-        console.error('Error al cargar los datos de Econaku:', error);
-
-        // Mantener disponibles las especies locales.
-        selectHabitat(currentHabitatKey);
-    }
-}
-
-// Mostrar primero las especies locales.
-renderSpecies();
-
-// Después actualizar con los datos de la API.
-probarCargaAPI();
+    selectHabitat('sierra');
+    document.getElementById('sierra').classList.add('active');
     
 async function registrarUsuario() {
     const nombre_usuario = document.getElementById('nombre-usuario').value.trim();
