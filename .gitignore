@@ -1,0 +1,11 @@
+# Credenciales y variables privadas
+servidor/.env
+servidor/cookies.txt
+
+# Dependencias de Node.js
+servidor/node_modules/
+
+# Archivos temporales
+*.log
+.DS_Store
+Thumbs.db
