@@ -31,7 +31,7 @@ const pool = {
         return resultado;
     }
 };
-const PUERTO = 3000;
+const PUERTO = process.env.PORT || 3000;
 
 
 app.use(cors({
