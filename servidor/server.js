@@ -4,6 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
+app.set('trust proxy', 1);
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
@@ -35,7 +36,7 @@ const PUERTO = process.env.PORT || 3000;
 
 
 app.use(cors({
-    origin: true,
+    origin: 'https://econaku.pages.dev',
     credentials: true
 }));
 
@@ -47,8 +48,8 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'none',
         maxAge: 1000 * 60 * 60 * 2
     }
 }));
