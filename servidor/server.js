@@ -54,6 +54,15 @@ app.use(session({
     }
 }));
 
+function soloAdministrador(req, res, next) {
+    if (!req.session.usuario || req.session.usuario.rol !== 'admin') {
+        return res.status(403).json({
+            error: 'No tienes permisos para realizar esta operación'
+        });
+    }
+
+    next();
+}
 
 app.get('/api', (req, res) => {
     res.json({
@@ -158,7 +167,7 @@ app.post('/api/login', async (req, res) => {
 
     try {
         const usuarios = await pool.query(
-            'SELECT id_usuario, nombre_usuario, password_hash FROM usuarios WHERE nombre_usuario = ? LIMIT 1',
+            'SELECT id_usuario, nombre_usuario, password_hash, rol FROM usuarios WHERE nombre_usuario = ? LIMIT 1',
             [nombre_usuario.trim()]
         );
 
@@ -179,7 +188,8 @@ app.post('/api/login', async (req, res) => {
 
         req.session.usuario = {
             id_usuario: usuario.id_usuario,
-            nombre_usuario: usuario.nombre_usuario
+            nombre_usuario: usuario.nombre_usuario,
+            rol: usuario.rol
         };
 
         res.json({
