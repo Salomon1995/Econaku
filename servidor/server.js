@@ -85,8 +85,8 @@ app.get('/api/admin/prueba', soloAdministrador, (req, res) => {
 
 app.get('/api/habitats', async (req, res) => {
     try {
-        const habitats = await pool.query(
-            'SELECT * FROM habitats'
+        const [habitats] = await conexion.query(
+           'SELECT * FROM habitats'
         );
 
         res.json(habitats);
@@ -101,24 +101,61 @@ app.get('/api/habitats', async (req, res) => {
 
 app.get('/api/especies', async (req, res) => {
     try {
-        const especies = await pool.query(
-            `SELECT
-                id_especie,
-                codigo,
-                nombre,
-                nombre_cientifico,
-                categoria,
-                descripcion,
-                imagen_url,
-                id_habitat
-            FROM especies
-            ORDER BY CAST(codigo AS UNSIGNED)`
-        );
+        const [especies] = await conexion.query(`
+            SELECT
+                e.id_especie,
+                e.codigo,
+                e.nombre,
+                e.nombre_cientifico,
+                e.categoria,
+                e.descripcion,
+                e.imagen_url,
+                e.rareza,
+                eh.id_habitat,
+                h.nombre AS habitat
+            FROM especies e
+            LEFT JOIN especie_habitat eh
+                ON e.id_especie = eh.id_especie
+            LEFT JOIN habitats h
+                ON eh.id_habitat = h.id_habitat
+            ORDER BY e.id_especie
+        `);
 
-        res.json(especies);
+        const especiesAgrupadas = [];
+
+        for (const especie of especies) {
+            let existente = especiesAgrupadas.find(
+                item => item.id_especie === especie.id_especie
+            );
+
+            if (!existente) {
+                existente = {
+                    id_especie: especie.id_especie,
+                    codigo: especie.codigo,
+                    nombre: especie.nombre,
+                    nombre_cientifico: especie.nombre_cientifico,
+                    categoria: especie.categoria,
+                    descripcion: especie.descripcion,
+                    imagen_url: especie.imagen_url,
+                    rareza: especie.rareza,
+                    habitats: []
+                };
+
+                especiesAgrupadas.push(existente);
+            }
+
+            if (especie.id_habitat !== null) {
+                existente.habitats.push({
+                    id_habitat: especie.id_habitat,
+                    nombre: especie.habitat
+                });
+            }
+        }
+
+        res.json(especiesAgrupadas);
 
     } catch (error) {
-        console.error('Error al consultar especies:', error.message);
+        console.error('Error al consultar especies:', error);
 
         res.status(500).json({
             error: 'No se pudieron consultar las especies'
