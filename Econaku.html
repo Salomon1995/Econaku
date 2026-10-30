@@ -1156,58 +1156,13 @@ const rareSpeciesList = [
       const count = rareSpeciesList.filter(i => i.discovered).length;
       document.getElementById('discovered-count').innerText = count;
     }
-    async function probarCargaAPI() {
-    try {
-        const respuestaHabitats = await fetch(API_URL + '/api/habitats', {
-            credentials: 'include'
-        });
-
-        if (!respuestaHabitats.ok) {
-            throw new Error('Error al cargar hábitats: ' + respuestaHabitats.status);
-        }
-
-        const habitats = await respuestaHabitats.json();
-
-        const respuestaEspecies = await fetch(API_URL + '/api/especies', {
-            credentials: 'include'
-        });
-
-        if (!respuestaEspecies.ok) {
-            throw new Error('Error al cargar especies: ' + respuestaEspecies.status);
-        }
-
-        const especies = await respuestaEspecies.json();
-
-        const especiesAdaptadas = especies.map(adaptarEspecie);
-        const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
-
-        const habitatsAdaptados = habitats.map(habitat =>
-            adaptarHabitat(habitat, especiesPorHabitat)
-        );
-
-        habitatsAdaptados.forEach((habitat, indice) => {
-            habitatsDesdeAPI[habitats[indice].codigo] = habitat;
-        });
-
-        console.log('Hábitats adaptados:', habitatsDesdeAPI);
-        console.log('Especies agrupadas:', especiesPorHabitat);
-
-        selectHabitat('sierra');
-
-        document.getElementById('sierra').classList.add('active');
-
-    } catch (error) {
-        console.error('Error al cargar los datos de Econaku:', error);
-    }
-}
-
-probarCargaAPI();
-
-function adaptarEspecie(especie) {
+    function adaptarEspecie(especie) {
     return {
         id: especie.codigo,
         id_especie: especie.id_especie,
-        habitatsId: especie.habitats.map(habitat => habitat.id_habitat),
+        habitatsId: (especie.habitats || []).map(
+            habitat => Number(habitat.id_habitat)
+        ),
         name: especie.nombre,
         scientific: especie.nombre_cientifico,
         category: especie.categoria,
@@ -1232,18 +1187,81 @@ function agruparEspeciesPorHabitat(especiesAdaptadas) {
     return grupos;
 }
 
-
 function adaptarHabitat(habitat, especiesPorHabitat) {
     return {
         title: habitat.nombre,
         description: habitat.descripcion,
         bgImage: habitat.imagen_fondo,
-        species: especiesPorHabitat[habitat.id_habitat] || []
+        species: especiesPorHabitat[Number(habitat.id_habitat)] || []
     };
 }
 
-    selectHabitat('sierra');
-    document.getElementById('sierra').classList.add('active');
+async function probarCargaAPI() {
+    try {
+        const respuestaHabitats = await fetch(API_URL + '/api/habitats', {
+            credentials: 'include'
+        });
+
+        if (!respuestaHabitats.ok) {
+            throw new Error('Error al cargar hábitats: ' + respuestaHabitats.status);
+        }
+
+        const habitats = await respuestaHabitats.json();
+
+        const respuestaEspecies = await fetch(API_URL + '/api/especies', {
+            credentials: 'include'
+        });
+
+        if (!respuestaEspecies.ok) {
+            throw new Error('Error al cargar especies: ' + respuestaEspecies.status);
+        }
+
+        const especies = await respuestaEspecies.json();
+
+        const especiesAdaptadas = especies.map(adaptarEspecie);
+        const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
+
+        // Relacionar los ID de la base de datos con las zonas del mapa.
+        const clavesHabitat = {
+            1: 'sierra',
+            2: 'rio',
+            3: 'canadas',
+            4: 'cafetales'
+        };
+
+        habitatsDesdeAPI = {};
+
+        habitats.forEach(habitat => {
+            const clave = clavesHabitat[Number(habitat.id_habitat)];
+
+            if (clave) {
+                habitatsDesdeAPI[clave] = adaptarHabitat(
+                    habitat,
+                    especiesPorHabitat
+                );
+            }
+        });
+
+        // Seleccionar el primer hábitat después de terminar la carga.
+        currentFilter = 'all';
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector('.filter-btn').classList.add('active');
+
+        selectHabitat('sierra');
+
+        zones.forEach(zone => zone.classList.remove('active'));
+        document.getElementById('sierra').classList.add('active');
+
+        console.log('Datos de Econaku cargados correctamente.');
+
+    } catch (error) {
+        console.error('Error al cargar los datos de Econaku:', error);
+    }
+}
+
+probarCargaAPI();
     
 async function registrarUsuario() {
     const nombre_usuario = document.getElementById('nombre-usuario').value.trim();
