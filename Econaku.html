@@ -529,6 +529,11 @@
       <button type="button" onclick="cerrarSesion()">
         Cerrar sesión
       </button>
+      <button id="btn-admin" 
+              onclick="window.location.href='admin.html'"
+              hidden>
+          ⚙️ Panel de administración
+      </button>
     </div>
   </section>
 
@@ -898,7 +903,7 @@ const rareSpeciesList = [
         
         let categoryLabel = '🌱 PLANTA';
         if (item.category === 'fauna') categoryLabel = '🐾 FAUNA';
-        else if (item.category === 'fungi') categoryLabel = '🍄 HONGO';
+        else if (item.category === 'hongos') categoryLabel = '🍄 HONGO';
         else if (item.category === 'rare') categoryLabel = '⭐ RARO DEX';
 
         card.innerHTML = `
@@ -1171,7 +1176,7 @@ const rareSpeciesList = [
         );
 
 	habitatsAdaptados.forEach((habitat, indice) => {
-    		habitatsDesdeAPI[habitats[indice].codigo] = habitat;
+    		habitatsDesdeAPI[habitats[indice].codigo.trim().toLowerCase()] = habitat;
 	});
 
         console.log('Hábitats adaptados:', habitatsAdaptados);
@@ -1297,6 +1302,8 @@ async function iniciarSesion() {
         }
 
         usuarioActual = datos.usuario;
+        document.getElementById('btn-admin').hidden =
+           usuarioActual.rol !== 'admin';
         await cargarDescubrimientos();
         document.getElementById('sesion-no-iniciada').hidden = true;
         document.getElementById('sesion-iniciada').hidden = false;
@@ -1326,7 +1333,7 @@ async function cerrarSesion() {
         }
 
         usuarioActual = null;
-
+        document.getElementById('btn-admin').hidden = true;
         document.getElementById('sesion-no-iniciada').hidden = false;
         document.getElementById('sesion-iniciada').hidden = true;
         document.getElementById('mensaje-usuario').textContent =
@@ -1374,6 +1381,40 @@ async function cargarDescubrimientos() {
         throw error;
     }
 }
+
+
+async function restaurarSesion() {
+    try {
+        const respuesta = await fetch(API_URL + '/api/sesion', {
+            credentials: 'include'
+        });
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok || !datos.usuario) {
+            return;
+        }
+
+        usuarioActual = datos.usuario;
+
+        document.getElementById('sesion-no-iniciada').hidden = true;
+        document.getElementById('sesion-iniciada').hidden = false;
+
+        document.getElementById('nombre-usuario-activo').textContent =
+            usuarioActual.nombre_usuario;
+
+        document.getElementById('btn-admin').hidden =
+            usuarioActual.rol !== 'admin';
+
+        await cargarDescubrimientos();
+
+    } catch (error) {
+        console.error('Error al restaurar la sesión:', error);
+    }
+}
+
+restaurarSesion();
+
 
   </script>
 </body>

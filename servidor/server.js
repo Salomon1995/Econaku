@@ -142,7 +142,7 @@ app.get('/api/especies', async (req, res) => {
                 especiesAgrupadas.push(existente);
             }
 
-            if (especie.id_habitat !== null) {
+            if (especie.id_habitat !== null && especie.id_habitat !== undefined) {
                 existente.habitats.push({
                     id_habitat: especie.id_habitat,
                     nombre: especie.habitat
@@ -161,6 +161,369 @@ app.get('/api/especies', async (req, res) => {
     }
 });
 
+app.post('/api/especies', soloAdministrador, async (req, res) => {
+    const {
+        codigo,
+        nombre,
+        nombre_cientifico,
+        categoria,
+        descripcion,
+        rareza,
+        imagen_url,
+        habitatIds
+    } = req.body;
+
+    const categoriasValidas = ['flora', 'fauna', 'hongos'];
+    const rarezasValidas = [
+        'comun',
+        'poco_comun',
+        'rara',
+        'muy_rara'
+    ];
+
+    if (!codigo?.trim() || !nombre?.trim()) {
+        return res.status(400).json({
+            error: 'El código y el nombre son obligatorios'
+        });
+    }
+
+    if (!categoriasValidas.includes(categoria)) {
+        return res.status(400).json({
+            error: 'La categoría no es válida'
+        });
+    }
+
+    if (!rarezasValidas.includes(rareza)) {
+        return res.status(400).json({
+            error: 'La rareza no es válida'
+        });
+    }
+
+    if (
+        !Array.isArray(habitatIds) ||
+        habitatIds.length === 0 ||
+        !habitatIds.every(id => Number.isInteger(id) && id > 0)
+    ) {
+        return res.status(400).json({
+            error: 'Debes seleccionar al menos un hábitat válido'
+        });
+    }
+
+    const habitatsUnicos = [...new Set(habitatIds)];
+
+    if (habitatsUnicos.length !== habitatIds.length) {
+        return res.status(400).json({
+            error: 'No puedes repetir hábitats'
+        });
+    }
+
+    let conexionDB;
+
+    try {
+        conexionDB = await conexion.getConnection();
+        await conexionDB.beginTransaction();
+
+        const [habitats] = await conexionDB.query(
+            `SELECT id_habitat
+             FROM habitats
+             WHERE id_habitat IN (${habitatsUnicos.map(() => '?').join(',')})`,
+            habitatsUnicos
+        );
+
+        if (habitats.length !== habitatsUnicos.length) {
+            await conexionDB.rollback();
+
+            return res.status(400).json({
+                error: 'Uno o varios hábitats no existen'
+            });
+        }
+
+        const [resultado] = await conexionDB.query(
+            `INSERT INTO especies
+                (codigo, nombre, nombre_cientifico, categoria,
+                 descripcion, rareza, imagen_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+                codigo.trim(),
+                nombre.trim(),
+                nombre_cientifico?.trim() || null,
+                categoria,
+                descripcion?.trim() || null,
+                rareza,
+                imagen_url?.trim() || null
+            ]
+        );
+
+        const idEspecie = resultado.insertId;
+
+        for (const idHabitat of habitatsUnicos) {
+            await conexionDB.query(
+                `INSERT INTO especie_habitat
+                    (id_especie, id_habitat)
+                 VALUES (?, ?)`,
+                [idEspecie, idHabitat]
+            );
+        }
+
+        await conexionDB.commit();
+
+        res.status(201).json({
+            mensaje: 'Especie registrada correctamente',
+            id_especie: idEspecie
+        });
+
+    } catch (error) {
+        if (conexionDB) {
+            await conexionDB.rollback();
+        }
+
+        console.error('Error al registrar especie:', error.message);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                error: 'El código de la especie ya existe'
+            });
+        }
+
+        res.status(500).json({
+            error: 'No se pudo registrar la especie'
+        });
+
+    } finally {
+        if (conexionDB) {
+            conexionDB.release();
+        }
+    }
+});
+
+
+app.put('/api/especies/:id', soloAdministrador, async (req, res) => {
+    const idEspecie = Number(req.params.id);
+
+    const {
+        codigo,
+        nombre,
+        nombre_cientifico,
+        categoria,
+        descripcion,
+        rareza,
+        imagen_url,
+        habitatIds
+    } = req.body;
+
+    const categoriasValidas = ['flora', 'fauna', 'hongos'];
+    const rarezasValidas = ['comun', 'poco_comun', 'rara', 'muy_rara'];
+
+    if (!Number.isInteger(idEspecie) || idEspecie <= 0) {
+        return res.status(400).json({
+            error: 'El identificador de la especie no es válido'
+        });
+    }
+
+    if (!codigo?.trim() || !nombre?.trim()) {
+        return res.status(400).json({
+            error: 'El código y el nombre son obligatorios'
+        });
+    }
+
+    if (!categoriasValidas.includes(categoria)) {
+        return res.status(400).json({
+            error: 'La categoría no es válida'
+        });
+    }
+
+    if (!rarezasValidas.includes(rareza)) {
+        return res.status(400).json({
+            error: 'La rareza no es válida'
+        });
+    }
+
+    if (
+        !Array.isArray(habitatIds) ||
+        habitatIds.length === 0 ||
+        !habitatIds.every(id => Number.isInteger(id) && id > 0)
+    ) {
+        return res.status(400).json({
+            error: 'Debes seleccionar al menos un hábitat válido'
+        });
+    }
+
+    const habitatsUnicos = [...new Set(habitatIds)];
+
+    if (habitatsUnicos.length !== habitatIds.length) {
+        return res.status(400).json({
+            error: 'No puedes repetir hábitats'
+        });
+    }
+
+    let conexionDB;
+
+    try {
+        conexionDB = await conexion.getConnection();
+        await conexionDB.beginTransaction();
+
+        const [especies] = await conexionDB.query(
+            'SELECT id_especie FROM especies WHERE id_especie = ?',
+            [idEspecie]
+        );
+
+        if (especies.length === 0) {
+            await conexionDB.rollback();
+
+            return res.status(404).json({
+                error: 'La especie no existe'
+            });
+        }
+
+        const [habitats] = await conexionDB.query(
+            `SELECT id_habitat
+             FROM habitats
+             WHERE id_habitat IN (${habitatsUnicos.map(() => '?').join(',')})`,
+            habitatsUnicos
+        );
+
+        if (habitats.length !== habitatsUnicos.length) {
+            await conexionDB.rollback();
+
+            return res.status(400).json({
+                error: 'Uno o varios hábitats no existen'
+            });
+        }
+
+        await conexionDB.query(
+            `UPDATE especies
+             SET codigo = ?,
+                 nombre = ?,
+                 nombre_cientifico = ?,
+                 categoria = ?,
+                 descripcion = ?,
+                 rareza = ?,
+                 imagen_url = ?
+             WHERE id_especie = ?`,
+            [
+                codigo.trim(),
+                nombre.trim(),
+                nombre_cientifico?.trim() || null,
+                categoria,
+                descripcion?.trim() || null,
+                rareza,
+                imagen_url?.trim() || null,
+                idEspecie
+            ]
+        );
+
+        await conexionDB.query(
+            'DELETE FROM especie_habitat WHERE id_especie = ?',
+            [idEspecie]
+        );
+
+        for (const idHabitat of habitatsUnicos) {
+            await conexionDB.query(
+                `INSERT INTO especie_habitat
+                    (id_especie, id_habitat)
+                 VALUES (?, ?)`,
+                [idEspecie, idHabitat]
+            );
+        }
+
+        await conexionDB.commit();
+
+        res.json({
+            mensaje: 'Especie actualizada correctamente',
+            id_especie: idEspecie
+        });
+
+    } catch (error) {
+        if (conexionDB) {
+            await conexionDB.rollback();
+        }
+
+        console.error('Error al actualizar especie:', error.message);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                error: 'El código de la especie ya existe'
+            });
+        }
+
+        res.status(500).json({
+            error: 'No se pudo actualizar la especie'
+        });
+
+    } finally {
+        if (conexionDB) {
+            conexionDB.release();
+        }
+    }
+});
+
+app.delete('/api/especies/:id', soloAdministrador, async (req, res) => {
+    const idEspecie = Number(req.params.id);
+
+    if (!Number.isInteger(idEspecie) || idEspecie <= 0) {
+        return res.status(400).json({
+            error: 'El identificador de la especie no es válido'
+        });
+    }
+
+    let conexionDB;
+
+    try {
+        conexionDB = await conexion.getConnection();
+        await conexionDB.beginTransaction();
+
+        const [especies] = await conexionDB.query(
+            'SELECT id_especie FROM especies WHERE id_especie = ?',
+            [idEspecie]
+        );
+
+        if (especies.length === 0) {
+            await conexionDB.rollback();
+
+            return res.status(404).json({
+                error: 'La especie no existe'
+            });
+        }
+
+        await conexionDB.query(
+            'DELETE FROM descubrimientos WHERE id_especie = ?',
+            [idEspecie]
+        );
+
+        await conexionDB.query(
+            'DELETE FROM especie_habitat WHERE id_especie = ?',
+            [idEspecie]
+        );
+
+        await conexionDB.query(
+            'DELETE FROM especies WHERE id_especie = ?',
+            [idEspecie]
+        );
+
+        await conexionDB.commit();
+
+        res.json({
+            mensaje: 'Especie eliminada correctamente',
+            id_especie: idEspecie
+        });
+
+    } catch (error) {
+        if (conexionDB) {
+            await conexionDB.rollback();
+        }
+
+        console.error('Error al eliminar especie:', error.message);
+
+        res.status(500).json({
+            error: 'No se pudo eliminar la especie'
+        });
+
+    } finally {
+        if (conexionDB) {
+            conexionDB.release();
+        }
+    }
+});
 
 app.post('/api/registro', async (req, res) => {
     const { nombre_usuario, password } = req.body;
@@ -200,6 +563,50 @@ app.post('/api/registro', async (req, res) => {
 
         res.status(500).json({
             error: 'No se pudo registrar el usuario'
+        });
+    }
+});
+
+app.post('/api/admin/usuarios', soloAdministrador, async (req, res) => {
+    const { nombre_usuario, password } = req.body;
+
+    if (!nombre_usuario || !password) {
+        return res.status(400).json({
+            error: 'El usuario y la contraseña son obligatorios'
+        });
+    }
+
+    if (nombre_usuario.trim().length < 3 || password.length < 8) {
+        return res.status(400).json({
+            error: 'El usuario debe tener al menos 3 caracteres y la contraseña 8'
+        });
+    }
+
+    try {
+        const hash = await bcrypt.hash(password, 12);
+
+        await pool.query(
+            `INSERT INTO usuarios
+                (nombre_usuario, password_hash, rol)
+             VALUES (?, ?, 'admin')`,
+            [nombre_usuario.trim(), hash]
+        );
+
+        res.status(201).json({
+            mensaje: 'Administrador creado correctamente'
+        });
+
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                error: 'Ese nombre de usuario ya existe'
+            });
+        }
+
+        console.error('Error al crear administrador:', error.message);
+
+        res.status(500).json({
+            error: 'No se pudo crear el administrador'
         });
     }
 });

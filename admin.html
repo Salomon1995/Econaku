@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración | Econaku</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f2f5ef;
+            color: #26352b;
+        }
+
+        header {
+            background: #315c43;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .panel {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px #00000012;
+        }
+
+        h2 {
+            color: #315c43;
+        }
+
+        .acciones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #477b58;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #315c43;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+       <h1>Panel de administración</h1>
+       <p>Econaku | Gestión del catálogo</p>
+
+       <button onclick="window.location.href='Econaku.html'">
+            Volver a Econaku
+       </button>
+    </header>
+
+    <main>
+
+        <section class="panel">
+            <h2>Bienvenido, administrador</h2>
+            <p>Desde este espacio podrás gestionar la información de Econaku.</p>
+        </section>
+
+        <section class="panel">
+            <h2>Gestión de especies</h2>
+            <div class="acciones">
+                <button>Registrar especie</button>
+                <button>Consultar especies</button>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Gestión de hábitats</h2>
+            <div class="acciones">
+                <button>Registrar hábitat</button>
+                <button>Consultar hábitats</button>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Gestión de administradores</h2>
+            <div class="acciones">
+                <button>Crear administrador</button>
+            </div>
+        </section>
+
+    </main>
+
+<script>
+    const API_URL = 'https://econaku.onrender.com';
+
+    async function verificarAdministrador() {
+        const panel = document.querySelector('main');
+        panel.style.display = 'none';
+
+        try {
+            const respuesta = await fetch(`${API_URL}/api/sesion`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+
+            if (!respuesta.ok) {
+                alert('Debes iniciar sesión para acceder al panel.');
+                window.location.replace('Econaku.html');
+                return;
+            }
+
+            const datos = await respuesta.json();
+
+            if (!datos.usuario || datos.usuario.rol !== 'admin') {
+                alert('No tienes permisos de administrador.');
+                window.location.replace('Econaku.html');
+                return;
+            }
+
+            document.querySelector('.panel h2').textContent =
+                `Bienvenido, ${datos.usuario.nombre_usuario}`;
+
+            panel.style.display = 'block';
+
+        } catch (error) {
+            alert('No se pudo verificar tu sesión.');
+            window.location.replace('Econaku.html');
+        }
+    }
+
+    verificarAdministrador();
+</script>
+</body>
+</html>
+
