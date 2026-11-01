@@ -22,7 +22,8 @@ const app = express();
 
 const origenesPermitidos = [
     'https://econaku.pages.dev',
-    'http://localhost:8000'
+    'http://localhost:8000',
+    'http://localhost:5500'
 ];
 
 app.use(cors({
@@ -337,6 +338,163 @@ app.post('/api/especies', soloAdministrador, async (req, res) => {
     }
 });
 
+app.put('/api/especies/:id', soloAdministrador, async (req, res) => {
+    const idEspecie = Number(req.params.id);
+
+    if (!Number.isInteger(idEspecie) || idEspecie <= 0) {
+        return res.status(400).json({
+            error: 'El ID de la especie no es válido'
+        });
+    }
+    const {
+         codigo,
+         nombre,
+         nombre_cientifico,
+         categoria,
+         descripcion,
+         rareza,
+         imagen_url,
+         habitatIds
+    } = req.body;
+
+    if (!codigo?.trim() || !nombre?.trim()) {
+       return res.status(400).json({
+          error: 'El código y el nombre son obligatorios'
+       });
+    }
+
+    const categoriasValidas = ['flora', 'fauna', 'hongos'];
+
+    if (!categoriasValidas.includes(categoria)) {
+        return res.status(400).json({
+           error: 'La categoría no es válida'
+        });
+    }
+
+    const rarezasValidas = [
+        'comun',
+        'poco_comun',
+        'rara',
+        'muy_rara'
+    ];
+
+    if (!rarezasValidas.includes(rareza)) {
+        return res.status(400).json({
+           error: 'La rareza no es válida'
+        });
+    }
+
+    if (!Array.isArray(habitatIds) || habitatIds.length === 0 || !habitatIds.every(id => Number.isInteger(id) && id > 0)) {
+        return res.status(400).json({
+           error: 'Debes seleccionar al menos un hábitat válido'
+        });
+    }
+
+    const habitatsUnicos = [...new Set(habitatIds)];
+
+    if (habitatsUnicos.length !== habitatIds.length) {
+        return res.status(400).json({
+            error: 'No puedes repetir hábitats'
+        });
+    }
+    
+    let conexionDB;
+
+    try {
+          conexionDB = await conexion.getConnection();
+          await conexionDB.beginTransaction();
+          const [especies] = await conexionDB.query(
+             'SELECT id_especie FROM especies WHERE id_especie = ?',
+             [idEspecie]
+          );
+
+          if (especies.length === 0) {
+             await conexionDB.rollback();
+
+             return res.status(404).json({
+                  error: 'La especie que intentas modificar no existe'
+             });
+          }
+
+          const [habitats] = await conexionDB.query(
+              `SELECT id_habitat
+              FROM habitats
+              WHERE id_habitat IN (${habitatsUnicos.map(() => '?').join(',')})`,
+              habitatsUnicos
+          );
+
+          if (habitats.length !== habitatsUnicos.length) {
+            await conexionDB.rollback();
+
+            return res.status(400).json({
+               error: 'Uno o varios hábitats no existen'
+            });
+          }
+
+          await conexionDB.query(
+            `UPDATE especies
+             SET codigo = ?,
+                 nombre = ?,
+                 nombre_cientifico = ?,
+                 categoria = ?,
+                 descripcion = ?,
+                 rareza = ?,
+                 imagen_url = ?
+              WHERE id_especie = ?`,
+             [
+               codigo.trim(),
+               nombre.trim(),
+               nombre_cientifico?.trim() || null,
+               categoria,
+               descripcion?.trim() || null,
+               rareza,
+               imagen_url?.trim() || null,
+               idEspecie
+             ]
+          );
+
+          await conexionDB.query(
+             'DELETE FROM especie_habitat WHERE id_especie = ?',
+             [idEspecie]
+          );
+
+          for (const idHabitat of habitatsUnicos) {
+             await conexionDB.query(
+                  `INSERT INTO especie_habitat (id_especie, id_habitat)
+                   VALUES (?, ?)`,
+                      [idEspecie, idHabitat]
+                   );
+          }
+
+          await conexionDB.commit();
+
+          res.json({
+             mensaje: 'Especie modificada correctamente'
+          });
+
+    } catch (error) {
+          if (conexionDB) {
+            await conexionDB.rollback();
+          }
+
+          console.error('Error al modificar especie:', error.message);
+
+          if (error.code === 'ER_DUP_ENTRY') {
+              return res.status(409).json({
+                  error: 'El código de la especie ya existe'
+              });
+          }
+
+          res.status(500).json({
+              error: 'No se pudo modificar la especie'
+          });
+
+    } finally {
+          if (conexionDB) {
+             conexionDB.release();
+          }
+      }
+});
 
 app.put('/api/especies/:id', soloAdministrador, async (req, res) => {
     const idEspecie = Number(req.params.id);
