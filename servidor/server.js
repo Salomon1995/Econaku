@@ -2,6 +2,21 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const multer = require('multer');
+
+const subirArchivo = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024
+    }
+});
 
 const app = express();
 
@@ -67,6 +82,32 @@ function soloAdministrador(req, res, next) {
 
     next();
 }
+
+app.post('/api/admin/subir-imagen', soloAdministrador, subirArchivo.single('imagen'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se recibió ninguna imagen' });
+        }
+
+        const resultado = await new Promise((resolve, reject) => {
+            const flujo = cloudinary.uploader.upload_stream(
+                { folder: 'econaku/especies', resource_type: 'image' },
+                (error, resultado) => {
+                    if (error) reject(error);
+                    else resolve(resultado);
+                }
+            );
+
+            flujo.end(req.file.buffer);
+        });
+
+        res.json({ secure_url: resultado.secure_url });
+
+    } catch (error) {
+        console.error('Error al subir imagen:', error);
+        res.status(500).json({ error: 'No se pudo subir la imagen' });
+    }
+});
 
 app.get('/api', (req, res) => {
     res.json({

@@ -200,7 +200,11 @@
 
     <div>
         <label for="imagen-especie">URL de imagen:</label>
-        <input type="url" id="imagen-especie">
+	<input type="url" id="imagen-especie">
+
+	<label for="archivo-imagen">O selecciona una imagen de tu dispositivo:</label>
+	<input type="file" id="archivo-imagen" accept="image/*">
+	<p id="estado-imagen"></p>
     </div>
 
     <div>
@@ -238,7 +242,39 @@
     </main>
 
 <script>
-    const API_URL = 'https://econaku.onrender.com';
+   const API_URL = 'https://econaku.onrender.com';
+    document.getElementById('archivo-imagen').addEventListener('change', async function () {
+    const archivo = this.files[0];
+
+    if (!archivo) return;
+
+    const estado = document.getElementById('estado-imagen');
+    const datos = new FormData();
+
+    datos.append('imagen', archivo);
+    estado.textContent = 'Subiendo imagen...';
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/admin/subir-imagen`, {
+            method: 'POST',
+            credentials: 'include',
+            body: datos
+        });
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(resultado.error || 'No se pudo subir la imagen');
+        }
+
+        document.getElementById('imagen-especie').value = resultado.secure_url;
+        estado.textContent = 'Imagen subida correctamente.';
+
+    } catch (error) {
+        console.error(error);
+        estado.textContent = 'Error al subir la imagen: ' + error.message;
+    }
+});
 
     function mostrarFormularioEspecie() {
           document.getElementById('formulario-especie').style.display = 'block';
@@ -248,6 +284,7 @@
     function cancelarFormularioEspecie() {
         document.getElementById('formulario-especie').style.display = 'none';
         document.getElementById('form-especie').reset();
+        document.getElementById('estado-imagen').textContent = '';
     }
 
 function obtenerDatosEspecie() {
@@ -269,6 +306,10 @@ function obtenerDatosEspecie() {
 
 async function registrarEspecie(event) {
     event.preventDefault();
+    if (document.getElementById('estado-imagen').textContent === 'Subiendo imagen...') {
+        alert('Espera a que termine de subir la imagen.');
+        return;
+    }
 
     const datosEspecie = obtenerDatosEspecie();
 
