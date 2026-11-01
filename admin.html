@@ -158,7 +158,7 @@
 
 <div id="contenido-especies"></div>
 <div id="formulario-especie" class="panel" style="display: none;">
-    <h2>Registrar nueva especie</h2>
+    <h2 id="titulo-formulario">Registrar nueva especie</h2>
 
     <form id="form-especie">
 
@@ -214,7 +214,7 @@
 
     <div id="habitats-especie"></div>
 
-    <button type="submit">Guardar especie</button>
+    <button type="submit" id="btn-guardar-especie">Guardar especie</button>
 
     <button type="button" onclick="cancelarFormularioEspecie()">
         Cancelar
@@ -243,6 +243,7 @@
 
 <script>
    const API_URL = 'https://econaku.onrender.com';
+   let idEspecieEditando = null;
     document.getElementById('archivo-imagen').addEventListener('change', async function () {
     const archivo = this.files[0];
 
@@ -276,22 +277,37 @@
     }
 });
 
-    function mostrarFormularioEspecie() {
-          document.getElementById('formulario-especie').style.display = 'block';
-          cargarHabitatsEspecie();
-    }
+    
+function mostrarFormularioEspecie() {
+        idEspecieEditando = null;
 
-    function mostrarFormularioEspecie() {
-       document.getElementById('contenido-especies').innerHTML = '';
-       document.getElementById('formulario-especie').style.display = 'block';
-       cargarHabitatsEspecie();
-    }
+        document.getElementById('contenido-especies').innerHTML = '';
+        document.getElementById('form-especie').reset();
 
-    function cancelarFormularioEspecie() {
+        document.getElementById('titulo-formulario').textContent =
+           'Registrar nueva especie';
+
+        document.getElementById('btn-guardar-especie').textContent =
+           'Guardar especie';
+
+        document.getElementById('formulario-especie').style.display = 'block';
+
+        cargarHabitatsEspecie();
+}
+
+function cancelarFormularioEspecie() {
+        idEspecieEditando = null;
+
         document.getElementById('formulario-especie').style.display = 'none';
         document.getElementById('form-especie').reset();
         document.getElementById('estado-imagen').textContent = '';
-    }
+
+        document.getElementById('titulo-formulario').textContent =
+          'Registrar nueva especie';
+
+        document.getElementById('btn-guardar-especie').textContent =
+          'Guardar especie';
+}
 
 function obtenerDatosEspecie() {
     const habitatIds = Array.from(
@@ -320,14 +336,18 @@ async function registrarEspecie(event) {
     const datosEspecie = obtenerDatosEspecie();
 
     try {
-        const respuesta = await fetch(`${API_URL}/api/especies`, {
-            method: 'POST',
-            headers: {
+        const respuesta = await fetch(
+           idEspecieEditando
+           ? `${API_URL}/api/especies/${idEspecieEditando}`
+           : `${API_URL}/api/especies`,
+           {
+           method: idEspecieEditando ? 'PUT' : 'POST',
+               headers: {
                 'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify(datosEspecie)
-        });
+               },
+               credentials: 'include',
+               body: JSON.stringify(datosEspecie)
+          });
 
         const resultado = await respuesta.json();
 
@@ -420,6 +440,14 @@ async function consultarEspecies() {
     		habitats
 	    );
 
+            const btnModificar = document.createElement('button');
+            btnModificar.textContent = 'Modificar';
+
+            btnModificar.addEventListener('click', () => {
+                 modificarEspecie(especie);
+            });
+
+            tarjeta.appendChild(btnModificar);
             contenedor.appendChild(tarjeta);
         });
 
@@ -434,7 +462,7 @@ document.getElementById('form-especie').addEventListener(
     registrarEspecie
 );
 
-async function cargarHabitatsEspecie() {
+async function cargarHabitatsEspecie(habitatsSeleccionados = []) {
     const contenedor = document.getElementById('habitats-especie');
 
     contenedor.innerHTML = '<p>Cargando hábitats...</p>';
@@ -451,14 +479,19 @@ async function cargarHabitatsEspecie() {
         contenedor.innerHTML = '<h3>Hábitats de la especie</h3>';
 
         habitats.forEach(habitat => {
-            const etiqueta = document.createElement('label');
+              const etiqueta = document.createElement('label');
 
-            etiqueta.innerHTML = `
-                <input type="checkbox" name="habitats" value="${habitat.id_habitat}">
-                ${habitat.nombre}
-            `;
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.name = 'habitats';
+              checkbox.value = habitat.id_habitat;
 
-            contenedor.appendChild(etiqueta);
+              checkbox.checked = habitatsSeleccionados.includes(
+                   Number(habitat.id_habitat)
+              );
+
+              etiqueta.append(checkbox, habitat.nombre);
+              contenedor.appendChild(etiqueta);
         });
 
     } catch (error) {
@@ -467,7 +500,40 @@ async function cargarHabitatsEspecie() {
     }
 }
 
-    async function verificarAdministrador() {
+async function modificarEspecie(especie) {
+    idEspecieEditando = especie.id_especie;
+
+    document.getElementById('contenido-especies').innerHTML = '';
+
+    document.getElementById('titulo-formulario').textContent =
+        'Modificar especie';
+
+    document.getElementById('btn-guardar-especie').textContent =
+        'Guardar cambios';
+
+    document.getElementById('formulario-especie').style.display = 'block';
+
+    document.getElementById('codigo-especie').value = especie.codigo;
+    document.getElementById('nombre-especie').value = especie.nombre;
+    document.getElementById('cientifico-especie').value =
+        especie.nombre_cientifico || '';
+
+    document.getElementById('categoria-especie').value = especie.categoria;
+    document.getElementById('rareza-especie').value = especie.rareza;
+
+    document.getElementById('imagen-especie').value =
+        especie.imagen_url || '';
+
+    document.getElementById('descripcion-especie').value =
+        especie.descripcion || '';
+
+    const habitatsSeleccionados = (especie.habitats || [])
+        .map(habitat => Number(habitat.id_habitat));
+
+    await cargarHabitatsEspecie(habitatsSeleccionados);
+}
+
+async function verificarAdministrador() {
         const panel = document.querySelector('main');
         panel.style.display = 'none';
 
