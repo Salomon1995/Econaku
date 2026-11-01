@@ -383,7 +383,7 @@ async function consultarEspecies() {
         }
 
         const especies = await respuesta.json();
-
+        console.log('Especies recibidas:', especies);
         contenedor.innerHTML = '';
 
         if (especies.length === 0) {
@@ -404,7 +404,12 @@ async function consultarEspecies() {
             const imagen = document.createElement('img');
             imagen.src = especie.imagen_url;
             imagen.onerror = () => {
-                console.log('No se pudo cargar:', especie.nombre, especie.imagen_url);
+                console.log('Error al cargar imagen:', {
+                   especie: especie.nombre,
+                   url: especie.imagen_url,
+                   estado: imagen.complete,
+                   ancho: imagen.naturalWidth
+               });
             };
 
             imagen.onload = () => {
@@ -439,7 +444,7 @@ async function consultarEspecies() {
     		rareza,
     		habitats
 	    );
-
+            
             const btnModificar = document.createElement('button');
             btnModificar.textContent = 'Modificar';
 
@@ -449,6 +454,7 @@ async function consultarEspecies() {
 
             tarjeta.appendChild(btnModificar);
             contenedor.appendChild(tarjeta);
+            console.log('Botón Modificar creado para:', especie.nombre);
         });
 
     } catch (error) {
