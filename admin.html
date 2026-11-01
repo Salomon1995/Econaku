@@ -281,6 +281,12 @@
           cargarHabitatsEspecie();
     }
 
+    function mostrarFormularioEspecie() {
+       document.getElementById('contenido-especies').innerHTML = '';
+       document.getElementById('formulario-especie').style.display = 'block';
+       cargarHabitatsEspecie();
+    }
+
     function cancelarFormularioEspecie() {
         document.getElementById('formulario-especie').style.display = 'none';
         document.getElementById('form-especie').reset();
@@ -342,6 +348,7 @@ async function registrarEspecie(event) {
 
 async function consultarEspecies() {
     const contenedor = document.getElementById('contenido-especies');
+    document.getElementById('formulario-especie').style.display = 'none';
 
     contenedor.innerHTML = '<p>Consultando especies...</p>';
 
