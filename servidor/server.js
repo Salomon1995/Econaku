@@ -138,6 +138,162 @@ app.get('/api/habitats', async (req, res) => {
     }
 });
 
+app.post('/api/habitats', soloAdministrador, async (req, res) => {
+    const { codigo, nombre, descripcion, imagen_fondo } = req.body;
+
+    if (!codigo?.trim() || !nombre?.trim()) {
+        return res.status(400).json({
+            error: 'El código y el nombre son obligatorios'
+        });
+    }
+
+    try {
+        const resultado = await pool.query(
+            `INSERT INTO habitats
+                (codigo, nombre, descripcion, imagen_fondo)
+             VALUES (?, ?, ?, ?)`,
+            [
+                codigo.trim().toLowerCase(),
+                nombre.trim(),
+                descripcion?.trim() || null,
+                imagen_fondo?.trim() || null
+            ]
+        );
+
+        res.status(201).json({
+            mensaje: 'Hábitat registrado correctamente',
+            id_habitat: resultado.insertId
+        });
+
+    } catch (error) {
+        console.error('Error al registrar hábitat:', error.message);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                error: 'Ese código de hábitat ya existe'
+            });
+        }
+
+        res.status(500).json({
+            error: 'No se pudo registrar el hábitat'
+        });
+    }
+});
+
+app.put('/api/habitats/:id', soloAdministrador, async (req, res) => {
+    const id = Number(req.params.id);
+    const { codigo, nombre, descripcion, imagen_fondo } = req.body;
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            error: 'El identificador no es válido'
+        });
+    }
+
+    if (!codigo?.trim() || !nombre?.trim()) {
+        return res.status(400).json({
+            error: 'El código y el nombre son obligatorios'
+        });
+    }
+
+    try {
+        const resultado = await pool.query(
+            `UPDATE habitats
+             SET codigo = ?,
+                 nombre = ?,
+                 descripcion = ?,
+                 imagen_fondo = ?
+             WHERE id_habitat = ?`,
+            [
+                codigo.trim().toLowerCase(),
+                nombre.trim(),
+                descripcion?.trim() || null,
+                imagen_fondo?.trim() || null,
+                id
+            ]
+        );
+
+        if (resultado.affectedRows === 0) {
+            const existe = await pool.query(
+                'SELECT id_habitat FROM habitats WHERE id_habitat = ?',
+                [id]
+            );
+
+            if (existe.length === 0) {
+                return res.status(404).json({
+                    error: 'El hábitat no existe'
+                });
+            }
+        }
+
+        res.json({
+            mensaje: 'Hábitat actualizado correctamente'
+        });
+
+    } catch (error) {
+        console.error('Error al modificar hábitat:', error.message);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                error: 'Ese código de hábitat ya está registrado'
+            });
+        }
+
+        res.status(500).json({
+            error: 'No se pudo modificar el hábitat'
+        });
+    }
+});
+
+app.delete('/api/habitats/:id', soloAdministrador, async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            error: 'El identificador no es válido'
+        });
+    }
+
+    try {
+        const habitats = await pool.query(
+            'SELECT id_habitat FROM habitats WHERE id_habitat = ?',
+            [id]
+        );
+
+        if (habitats.length === 0) {
+            return res.status(404).json({
+                error: 'El hábitat no existe'
+            });
+        }
+
+        const relaciones = await pool.query(
+            'SELECT id_especie FROM especie_habitat WHERE id_habitat = ? LIMIT 1',
+            [id]
+        );
+
+        if (relaciones.length > 0) {
+            return res.status(409).json({
+                error: 'No puedes eliminar este hábitat porque tiene especies asignadas'
+            });
+        }
+
+        await pool.query(
+            'DELETE FROM habitats WHERE id_habitat = ?',
+            [id]
+        );
+
+        res.json({
+            mensaje: 'Hábitat eliminado correctamente'
+        });
+
+    } catch (error) {
+        console.error('Error al eliminar hábitat:', error.message);
+
+        res.status(500).json({
+            error: 'No se pudo eliminar el hábitat'
+        });
+    }
+});
 
 app.get('/api/especies', async (req, res) => {
     try {
@@ -336,164 +492,6 @@ app.post('/api/especies', soloAdministrador, async (req, res) => {
             conexionDB.release();
         }
     }
-});
-
-app.put('/api/especies/:id', soloAdministrador, async (req, res) => {
-    const idEspecie = Number(req.params.id);
-
-    if (!Number.isInteger(idEspecie) || idEspecie <= 0) {
-        return res.status(400).json({
-            error: 'El ID de la especie no es válido'
-        });
-    }
-    const {
-         codigo,
-         nombre,
-         nombre_cientifico,
-         categoria,
-         descripcion,
-         rareza,
-         imagen_url,
-         habitatIds
-    } = req.body;
-
-    if (!codigo?.trim() || !nombre?.trim()) {
-       return res.status(400).json({
-          error: 'El código y el nombre son obligatorios'
-       });
-    }
-
-    const categoriasValidas = ['flora', 'fauna', 'hongos'];
-
-    if (!categoriasValidas.includes(categoria)) {
-        return res.status(400).json({
-           error: 'La categoría no es válida'
-        });
-    }
-
-    const rarezasValidas = [
-        'comun',
-        'poco_comun',
-        'rara',
-        'muy_rara'
-    ];
-
-    if (!rarezasValidas.includes(rareza)) {
-        return res.status(400).json({
-           error: 'La rareza no es válida'
-        });
-    }
-
-    if (!Array.isArray(habitatIds) || habitatIds.length === 0 || !habitatIds.every(id => Number.isInteger(id) && id > 0)) {
-        return res.status(400).json({
-           error: 'Debes seleccionar al menos un hábitat válido'
-        });
-    }
-
-    const habitatsUnicos = [...new Set(habitatIds)];
-
-    if (habitatsUnicos.length !== habitatIds.length) {
-        return res.status(400).json({
-            error: 'No puedes repetir hábitats'
-        });
-    }
-    
-    let conexionDB;
-
-    try {
-          conexionDB = await conexion.getConnection();
-          await conexionDB.beginTransaction();
-          const [especies] = await conexionDB.query(
-             'SELECT id_especie FROM especies WHERE id_especie = ?',
-             [idEspecie]
-          );
-
-          if (especies.length === 0) {
-             await conexionDB.rollback();
-
-             return res.status(404).json({
-                  error: 'La especie que intentas modificar no existe'
-             });
-          }
-
-          const [habitats] = await conexionDB.query(
-              `SELECT id_habitat
-              FROM habitats
-              WHERE id_habitat IN (${habitatsUnicos.map(() => '?').join(',')})`,
-              habitatsUnicos
-          );
-
-          if (habitats.length !== habitatsUnicos.length) {
-            await conexionDB.rollback();
-
-            return res.status(400).json({
-               error: 'Uno o varios hábitats no existen'
-            });
-          }
-
-          await conexionDB.query(
-            `UPDATE especies
-             SET codigo = ?,
-                 nombre = ?,
-                 nombre_cientifico = ?,
-                 categoria = ?,
-                 descripcion = ?,
-                 rareza = ?,
-                 imagen_url = ?
-              WHERE id_especie = ?`,
-             [
-               codigo.trim(),
-               nombre.trim(),
-               nombre_cientifico?.trim() || null,
-               categoria,
-               descripcion?.trim() || null,
-               rareza,
-               imagen_url?.trim() || null,
-               idEspecie
-             ]
-          );
-
-          await conexionDB.query(
-             'DELETE FROM especie_habitat WHERE id_especie = ?',
-             [idEspecie]
-          );
-
-          for (const idHabitat of habitatsUnicos) {
-             await conexionDB.query(
-                  `INSERT INTO especie_habitat (id_especie, id_habitat)
-                   VALUES (?, ?)`,
-                      [idEspecie, idHabitat]
-                   );
-          }
-
-          await conexionDB.commit();
-
-          res.json({
-             mensaje: 'Especie modificada correctamente'
-          });
-
-    } catch (error) {
-          if (conexionDB) {
-            await conexionDB.rollback();
-          }
-
-          console.error('Error al modificar especie:', error.message);
-
-          if (error.code === 'ER_DUP_ENTRY') {
-              return res.status(409).json({
-                  error: 'El código de la especie ya existe'
-              });
-          }
-
-          res.status(500).json({
-              error: 'No se pudo modificar la especie'
-          });
-
-    } finally {
-          if (conexionDB) {
-             conexionDB.release();
-          }
-      }
 });
 
 app.put('/api/especies/:id', soloAdministrador, async (req, res) => {
@@ -840,16 +838,24 @@ app.post('/api/login', async (req, res) => {
             });
         }
 
+        req.session.regenerate((error) => {
+            if (error) {
+               return res.status(500).json({
+                    error: 'No se pudo iniciar la sesión'
+               });
+            }
+
         req.session.usuario = {
-            id_usuario: usuario.id_usuario,
-            nombre_usuario: usuario.nombre_usuario,
-            rol: usuario.rol
+           id_usuario: usuario.id_usuario,
+           nombre_usuario: usuario.nombre_usuario,
+           rol: usuario.rol
         };
 
         res.json({
-            mensaje: 'Inicio de sesión correcto',
-            usuario: req.session.usuario
+           mensaje: 'Inicio de sesión correcto',
+           usuario: req.session.usuario
         });
+    });
 
     } catch (error) {
         console.error('Error al iniciar sesión:', error.message);
@@ -882,12 +888,16 @@ app.post('/api/logout', (req, res) => {
             });
         }
 
-        res.clearCookie('connect.sid');
-
-        res.json({
-            mensaje: 'Sesión cerrada correctamente'
-        });
+    res.clearCookie('connect.sid', {
+           httpOnly: true,
+           secure: true,
+           sameSite: 'none'
     });
+
+    res.json({
+            mensaje: 'Sesión cerrada correctamente'
+    });
+   });
 });
 
 app.post('/api/descubrimientos', async (req, res) => {

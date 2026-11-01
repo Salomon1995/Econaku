@@ -225,19 +225,75 @@
         </section>
 
         <section class="panel">
-            <h2>Gestión de hábitats</h2>
-            <div class="acciones">
-                <button>Registrar hábitat</button>
-                <button>Consultar hábitats</button>
-            </div>
+           <h2>Gestión de hábitats</h2>
+
+           <div class="acciones">
+               <button type="button" onclick="mostrarFormularioHabitat()">
+                     Registrar hábitat
+               </button>
+
+               <button type="button" onclick="consultarHabitats()">
+                     Consultar hábitats
+               </button>
+           </div>
+
+           <form id="formularioHabitat" style="display:none;"
+                  onsubmit="registrarHabitat(event)">
+
+                <h3 id="tituloFormularioHabitat">Registrar hábitat</h3>
+
+                <label for="codigoHabitat">Código:</label>
+                <input type="text" id="codigoHabitat" required>
+
+                <label for="nombreHabitat">Nombre:</label>
+                <input type="text" id="nombreHabitat" required>
+
+                <label for="descripcionHabitat">Descripción:</label>
+                <textarea id="descripcionHabitat"></textarea>
+
+                <label for="imagenHabitat">URL de imagen de fondo:</label>
+                <input type="url" id="imagenHabitat">
+
+           <div class="acciones">
+                <button type="submit">Guardar hábitat</button>
+                <button type="button" onclick="cancelarFormularioHabitat()">
+                       Cancelar
+                </button>
+           </div>
+           </form>
+
+           <div id="listaHabitats"></div>
         </section>
 
-        <section class="panel">
-            <h2>Gestión de administradores</h2>
-            <div class="acciones">
-                <button>Crear administrador</button>
-            </div>
-        </section>
+       <section class="panel">
+    <h2>Gestión de administradores</h2>
+
+    <div class="acciones">
+        <button type="button" onclick="mostrarFormularioAdmin()">
+            Crear administrador
+        </button>
+    </div>
+
+    <form id="formulario-admin" style="display:none;"
+          onsubmit="crearAdministrador(event)">
+
+        <h3>Registrar nuevo administrador</h3>
+
+        <label for="nombre-admin">Nombre de usuario:</label>
+        <input type="text" id="nombre-admin" required>
+
+        <label for="password-admin">Contraseña:</label>
+        <input type="password" id="password-admin" required minlength="8">
+
+        <div class="acciones">
+            <button type="submit">Crear cuenta</button>
+
+            <button type="button" onclick="cancelarFormularioAdmin()">
+                Cancelar
+            </button>
+        </div>
+    </form>
+</section>
 
     </main>
 
@@ -283,6 +339,7 @@ function mostrarFormularioEspecie() {
 
         document.getElementById('contenido-especies').innerHTML = '';
         document.getElementById('form-especie').reset();
+        document.getElementById('estado-imagen').textContent = '';
 
         document.getElementById('titulo-formulario').textContent =
            'Registrar nueva especie';
@@ -357,8 +414,8 @@ async function registrarEspecie(event) {
         }
 
         alert(resultado.mensaje);
-
         cancelarFormularioEspecie();
+        await consultarEspecies();
 
     } catch (error) {
         console.error('Error al registrar especie:', error);
@@ -457,6 +514,8 @@ async function consultarEspecies() {
             tarjeta.appendChild(btnModificar);
             tarjeta.appendChild(btnEliminar);
             contenedor.appendChild(tarjeta);
+            btnModificar.style.marginRight = '10px';
+            btnEliminar.style.marginLeft = '10px';
             console.log('Botón Modificar creado para:', especie.nombre);
         });
 
@@ -493,7 +552,7 @@ async function eliminarEspecie(especie) {
         const datos = await respuesta.json();
 
         if (!respuesta.ok) {
-            throw new Error(datos.mensaje || 'No se pudo eliminar la especie.');
+            throw new Error(datos.error || datos.mensaje || 'No se pudo eliminar la especie.');
         }
 
         alert(datos.mensaje);
@@ -545,6 +604,8 @@ async function cargarHabitatsEspecie(habitatsSeleccionados = []) {
 
 async function modificarEspecie(especie) {
     idEspecieEditando = especie.id_especie;
+    document.getElementById('archivo-imagen').value = '';
+    document.getElementById('estado-imagen').textContent = '';
 
     document.getElementById('contenido-especies').innerHTML = '';
 
@@ -574,6 +635,228 @@ async function modificarEspecie(especie) {
         .map(habitat => Number(habitat.id_habitat));
 
     await cargarHabitatsEspecie(habitatsSeleccionados);
+}
+
+let idHabitatEditando = null;
+
+function mostrarFormularioHabitat() {
+    idHabitatEditando = null;
+
+    document.getElementById('formularioHabitat').reset();
+    document.getElementById('tituloFormularioHabitat').textContent =
+        'Registrar hábitat';
+
+    document.getElementById('formularioHabitat').style.display = 'block';
+}
+
+function cancelarFormularioHabitat() {
+    idHabitatEditando = null;
+
+    document.getElementById('formularioHabitat').reset();
+    document.getElementById('formularioHabitat').style.display = 'none';
+}
+
+async function registrarHabitat(event) {
+    event.preventDefault();
+
+    const habitat = {
+        codigo: document.getElementById('codigoHabitat').value.trim(),
+        nombre: document.getElementById('nombreHabitat').value.trim(),
+        descripcion: document.getElementById('descripcionHabitat').value.trim(),
+        imagen_fondo: document.getElementById('imagenHabitat').value.trim()
+    };
+
+    const url = idHabitatEditando
+        ? `${API_URL}/api/habitats/${idHabitatEditando}`
+        : `${API_URL}/api/habitats`;
+
+    const metodo = idHabitatEditando ? 'PUT' : 'POST';
+
+    try {
+        const respuesta = await fetch(url, {
+            method: metodo,
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(habitat)
+        });
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(datos.mensaje || datos.error || 'No se pudo guardar el hábitat.');
+        }
+
+        alert(datos.mensaje || 'Hábitat guardado correctamente.');
+        cancelarFormularioHabitat();
+        await consultarHabitats();
+
+    } catch (error) {
+        console.error('Error al guardar hábitat:', error);
+        alert(error.message);
+    }
+}
+
+async function consultarHabitats() {
+    const contenedor = document.getElementById('listaHabitats');
+
+    contenedor.innerHTML = '<p>Cargando hábitats...</p>';
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/habitats`);
+        if (!respuesta.ok) {
+            throw new Error('No se pudieron consultar los hábitats.');
+        }
+
+        const habitats = await respuesta.json();
+
+        contenedor.innerHTML = '';
+
+        if (habitats.length === 0) {
+            contenedor.innerHTML = '<p>No hay hábitats registrados.</p>';
+            return;
+        }
+
+        habitats.forEach(habitat => {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'tarjeta-habitat';
+
+            const titulo = document.createElement('h3');
+            titulo.textContent = habitat.nombre;
+
+            const codigo = document.createElement('p');
+            codigo.textContent = `Código: ${habitat.codigo}`;
+
+            const descripcion = document.createElement('p');
+            descripcion.textContent = habitat.descripcion || 'Sin descripción';
+
+            tarjeta.append(titulo, codigo, descripcion);
+
+            if (habitat.imagen_fondo) {
+                const imagen = document.createElement('img');
+                imagen.src = habitat.imagen_fondo;
+                imagen.alt = `Imagen de ${habitat.nombre}`;
+                imagen.style.maxWidth = '180px';
+                tarjeta.appendChild(imagen);
+            }
+
+            const modificar = document.createElement('button');
+            modificar.type = 'button';
+            modificar.textContent = 'Modificar';
+            modificar.addEventListener('click', () => modificarHabitat(habitat));
+
+            const eliminar = document.createElement('button');
+            eliminar.type = 'button';
+            eliminar.textContent = 'Eliminar';
+            eliminar.addEventListener('click', () => eliminarHabitat(habitat));
+
+            tarjeta.append(modificar, eliminar);
+            contenedor.appendChild(tarjeta);
+        });
+
+    } catch (error) {
+        console.error('Error al consultar hábitats:', error);
+        contenedor.innerHTML = '<p>Error al cargar los hábitats.</p>';
+    }
+}
+
+function modificarHabitat(habitat) {
+    idHabitatEditando = habitat.id_habitat;
+
+    document.getElementById('codigoHabitat').value = habitat.codigo;
+    document.getElementById('nombreHabitat').value = habitat.nombre;
+    document.getElementById('descripcionHabitat').value =
+        habitat.descripcion || '';
+    document.getElementById('imagenHabitat').value =
+        habitat.imagen_fondo || '';
+
+    document.getElementById('tituloFormularioHabitat').textContent =
+        'Modificar hábitat';
+
+    document.getElementById('formularioHabitat').style.display = 'block';
+
+    document.getElementById('formularioHabitat').scrollIntoView({
+        behavior: 'smooth'
+    });
+}
+
+async function eliminarHabitat(habitat) {
+    const confirmar = confirm(
+        `¿Estás seguro de eliminar el hábitat "${habitat.nombre}"?`
+    );
+
+    if (!confirmar) return;
+
+    try {
+        const respuesta = await fetch(
+            `${API_URL}/api/habitats/${habitat.id_habitat}`,
+            {
+                method: 'DELETE',
+                credentials: 'include'
+            }
+        );
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(datos.mensaje || datos.error ||
+                'No se pudo eliminar el hábitat.');
+        }
+
+        alert(datos.mensaje || 'Hábitat eliminado correctamente.');
+        await consultarHabitats();
+    } catch (error) {
+        console.error('Error al eliminar hábitat:', error);
+        alert(error.message);
+    }
+}
+
+function mostrarFormularioAdmin() {
+    document.getElementById('formulario-admin').reset();
+    document.getElementById('formulario-admin').style.display = 'block';
+}
+
+function cancelarFormularioAdmin() {
+    document.getElementById('formulario-admin').reset();
+    document.getElementById('formulario-admin').style.display = 'none';
+}
+
+async function crearAdministrador(event) {
+    event.preventDefault();
+
+    const administrador = {
+        nombre_usuario: document.getElementById('nombre-admin').value.trim(),
+        password: document.getElementById('password-admin').value
+    };
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/admin/usuarios`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(administrador)
+        });
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(
+                resultado.mensaje || resultado.error ||
+                'No se pudo crear el administrador.'
+            );
+        }
+
+        alert(resultado.mensaje || 'Administrador creado correctamente.');
+
+        cancelarFormularioAdmin();
+
+    } catch (error) {
+        console.error('Error al crear administrador:', error);
+        alert(error.message);
+    }
 }
 
 async function verificarAdministrador() {
