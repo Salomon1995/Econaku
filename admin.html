@@ -446,8 +446,16 @@ async function consultarEspecies() {
             btnModificar.addEventListener('click', () => {
                  modificarEspecie(especie);
             });
+            
+            const btnEliminar = document.createElement('button');
+            btnEliminar.textContent = 'Eliminar';
+
+            btnEliminar.addEventListener('click', () => {
+                eliminarEspecie(especie);
+            });
 
             tarjeta.appendChild(btnModificar);
+            tarjeta.appendChild(btnEliminar);
             contenedor.appendChild(tarjeta);
             console.log('Botón Modificar creado para:', especie.nombre);
         });
@@ -462,6 +470,40 @@ document.getElementById('form-especie').addEventListener(
     'submit',
     registrarEspecie
 );
+
+async function eliminarEspecie(especie) {
+    const confirmar = confirm(
+        `¿Estás seguro de eliminar "${especie.nombre}"?\n\n` +
+        'También se eliminarán sus descubrimientos de todos los usuarios.'
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(
+            `${API_URL}/api/especies/${especie.id_especie}`,
+            {
+                method: 'DELETE',
+                credentials: 'include'
+            }
+        );
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(datos.mensaje || 'No se pudo eliminar la especie.');
+        }
+
+        alert(datos.mensaje);
+        await consultarEspecies();
+
+    } catch (error) {
+        console.error('Error al eliminar especie:', error);
+        alert(error.message);
+    }
+}
 
 async function cargarHabitatsEspecie(habitatsSeleccionados = []) {
     const contenedor = document.getElementById('habitats-especie');
