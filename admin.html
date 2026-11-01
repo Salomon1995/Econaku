@@ -61,6 +61,69 @@
         button:hover {
             background: #315c43;
         }
+        /* Formulario de especies */
+        #formulario-especie {
+            margin-top: 20px;
+            border: 1px solid #dce7dd;
+        }
+
+        #formulario-especie h2 {
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+
+        #form-especie {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px 20px;
+        }
+
+        #form-especie label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 7px;
+            color: #315c43;
+        }
+
+        #form-especie input,
+        #form-especie select,
+        #form-especie textarea {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #cbd8ce;
+            border-radius: 7px;
+            font-size: 15px;
+            font-family: Arial, sans-serif;
+        }
+
+        #form-especie textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        #form-especie button {
+            margin-top: 10px;
+        }
+
+        /* Elementos que ocupan todo el ancho */
+        #form-especie > div:has(textarea),
+        #form-especie button,
+        #habitats-especie {
+            grid-column: 1 / -1;
+        }
+
+       /* Adaptación a celulares */
+        @media (max-width: 600px) {
+            #form-especie {
+                grid-template-columns: 1fr;
+            }
+
+            #form-especie textarea,
+            #form-especie button,
+            #habitats-especie {
+                grid-column: 1;
+            }
+         }
     </style>
 </head>
 
@@ -85,9 +148,76 @@
         <section class="panel">
             <h2>Gestión de especies</h2>
             <div class="acciones">
-                <button>Registrar especie</button>
-                <button>Consultar especies</button>
+               <button onclick="mostrarFormularioEspecie()">
+                    Registrar especie
+               </button>
+               <button onclick="consultarEspecies()">
+                     Consultar especies
+               </button>
             </div>
+
+<div id="contenido-especies"></div>
+<div id="formulario-especie" class="panel" style="display: none;">
+    <h2>Registrar nueva especie</h2>
+
+    <form id="form-especie">
+
+    <div>
+        <label for="codigo-especie">Código:</label>
+        <input type="text" id="codigo-especie" required>
+    </div>
+
+    <div>
+        <label for="nombre-especie">Nombre común:</label>
+        <input type="text" id="nombre-especie" required>
+    </div>
+
+    <div>
+        <label for="cientifico-especie">Nombre científico:</label>
+        <input type="text" id="cientifico-especie">
+    </div>
+
+    <div>
+        <label for="categoria-especie">Categoría:</label>
+        <select id="categoria-especie" required>
+            <option value="">Seleccionar categoría</option>
+            <option value="flora">Flora</option>
+            <option value="fauna">Fauna</option>
+            <option value="hongos">Hongos</option>
+        </select>
+    </div>
+
+    <div>
+    <label for="rareza-especie">Rareza:</label>
+    <select id="rareza-especie" required>
+        <option value="">Seleccionar rareza</option>
+        <option value="comun">Común</option>
+        <option value="poco_comun">Poco común</option>
+        <option value="rara">Rara</option>
+        <option value="muy_rara">Muy rara</option>
+    </select>
+    </div>
+
+    <div>
+        <label for="imagen-especie">URL de imagen:</label>
+        <input type="url" id="imagen-especie">
+    </div>
+
+    <div>
+        <label for="descripcion-especie">Descripción:</label>
+        <textarea id="descripcion-especie" required></textarea>
+    </div>
+
+    <div id="habitats-especie"></div>
+
+    <button type="submit">Guardar especie</button>
+
+    <button type="button" onclick="cancelarFormularioEspecie()">
+        Cancelar
+    </button>
+
+</form>
+</div>
         </section>
 
         <section class="panel">
@@ -109,6 +239,185 @@
 
 <script>
     const API_URL = 'https://econaku.onrender.com';
+
+    function mostrarFormularioEspecie() {
+          document.getElementById('formulario-especie').style.display = 'block';
+          cargarHabitatsEspecie();
+    }
+
+    function cancelarFormularioEspecie() {
+        document.getElementById('formulario-especie').style.display = 'none';
+        document.getElementById('form-especie').reset();
+    }
+
+function obtenerDatosEspecie() {
+    const habitatIds = Array.from(
+        document.querySelectorAll('input[name="habitats"]:checked')
+    ).map(input => Number(input.value));
+
+    return {
+        codigo: document.getElementById('codigo-especie').value.trim(),
+        nombre: document.getElementById('nombre-especie').value.trim(),
+        nombre_cientifico: document.getElementById('cientifico-especie').value.trim(),
+        categoria: document.getElementById('categoria-especie').value,
+        rareza: document.getElementById('rareza-especie').value,
+        descripcion: document.getElementById('descripcion-especie').value.trim(),
+        imagen_url: document.getElementById('imagen-especie').value.trim(),
+        habitatIds: habitatIds
+    };
+}
+
+async function registrarEspecie(event) {
+    event.preventDefault();
+
+    const datosEspecie = obtenerDatosEspecie();
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/especies`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(datosEspecie)
+        });
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok) {
+            alert(resultado.error || 'No se pudo registrar la especie.');
+            return;
+        }
+
+        alert(resultado.mensaje);
+
+        cancelarFormularioEspecie();
+
+    } catch (error) {
+        console.error('Error al registrar especie:', error);
+        alert('No fue posible comunicarse con el servidor.');
+    }
+}
+
+async function consultarEspecies() {
+    const contenedor = document.getElementById('contenido-especies');
+
+    contenedor.innerHTML = '<p>Consultando especies...</p>';
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/especies`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        if (!respuesta.ok) {
+            throw new Error('No se pudieron consultar las especies.');
+        }
+
+        const especies = await respuesta.json();
+
+        contenedor.innerHTML = '';
+
+        if (especies.length === 0) {
+            contenedor.textContent = 'Todavía no hay especies registradas.';
+            return;
+        }
+
+        const titulo = document.createElement('h3');
+        titulo.textContent = 'Especies registradas';
+        contenedor.appendChild(titulo);
+
+        especies.forEach(especie => {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'panel';
+
+            const nombre = document.createElement('h3');
+            nombre.textContent = especie.nombre;
+            const imagen = document.createElement('img');
+            imagen.src = especie.imagen_url;
+            imagen.onerror = () => {
+                console.log('No se pudo cargar:', especie.nombre, especie.imagen_url);
+            };
+
+            imagen.onload = () => {
+                console.log('Imagen cargada:', especie.nombre);
+            };
+            imagen.alt = especie.nombre;
+            imagen.style.width = '180px';
+            imagen.style.height = '140px';
+            imagen.style.objectFit = 'cover';
+            imagen.style.borderRadius = '10px';
+
+            const codigo = document.createElement('p');
+            codigo.textContent = `Código: ${especie.codigo}`;
+
+            const categoria = document.createElement('p');
+            categoria.textContent = `Categoría: ${especie.categoria}`;
+
+            const rareza = document.createElement('p');
+            rareza.textContent = `Rareza: ${especie.rareza}`;
+
+            const habitats = document.createElement('p');
+            habitats.textContent = 'Hábitats: ' +
+                (especie.habitats || [])
+                    .map(h => h.nombre)
+                    .join(', ');
+
+            tarjeta.append(
+    		imagen,
+    		nombre,
+    		codigo,
+    		categoria,
+    		rareza,
+    		habitats
+	    );
+
+            contenedor.appendChild(tarjeta);
+        });
+
+    } catch (error) {
+        console.error('Error al consultar especies:', error);
+        contenedor.textContent = 'No fue posible cargar las especies.';
+    }
+}
+
+document.getElementById('form-especie').addEventListener(
+    'submit',
+    registrarEspecie
+);
+
+async function cargarHabitatsEspecie() {
+    const contenedor = document.getElementById('habitats-especie');
+
+    contenedor.innerHTML = '<p>Cargando hábitats...</p>';
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/habitats`);
+
+        if (!respuesta.ok) {
+            throw new Error('No se pudieron cargar los hábitats.');
+        }
+
+        const habitats = await respuesta.json();
+
+        contenedor.innerHTML = '<h3>Hábitats de la especie</h3>';
+
+        habitats.forEach(habitat => {
+            const etiqueta = document.createElement('label');
+
+            etiqueta.innerHTML = `
+                <input type="checkbox" name="habitats" value="${habitat.id_habitat}">
+                ${habitat.nombre}
+            `;
+
+            contenedor.appendChild(etiqueta);
+        });
+
+    } catch (error) {
+        contenedor.innerHTML = '<p>No fue posible cargar los hábitats.</p>';
+        console.error(error);
+    }
+}
 
     async function verificarAdministrador() {
         const panel = document.querySelector('main');

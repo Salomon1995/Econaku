@@ -719,8 +719,8 @@
         description: "Bosque de niebla alto y húmedo. Huevo de helechos arborescentes, anfibios, orquídeas y hongos silvícolas.",
         bgImage: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80",
         species: [
-          { id: 1, name: "Helecho Arborescente", scientific: "Cyathea mexicana", category: "flora", image: "cyathea mexicana.png", desc: "Verdadero fósil viviente que forma el sotobosque en la sierra de Misantla." },
-          { id: 2, name: "Orquídea Silvestre", scientific: "Prosthechea cochleata", category: "flora", image: "Prosthechea cochleata.png", desc: "Epífita abundante en los troncos húmedos de encinos y robles serranos." },
+          { id: 1, name: "Helecho Arborescente", scientific: "Cyathea mexicana", category: "flora", image: "cyathea mexicana.png", desc: "Verdadero fósil viviente que                forma el sotobosque en la sierra de Misantla." },
+          { id: 2, name: "Orquídea Silvestre", scientific: "Prosthechea cochleata", category: "flora", image: "Prosthechea cochleata.png", desc: "Epífita abundante en           los troncos húmedos de encinos y robles serranos." },
           { id: 3, name: "Piñanona / Monstera", scientific: "Monstera deliciosa", category: "flora", image: "Monstera deliciosa.png", desc: "Planta de grandes hojas recortadas común en los bosques húmedos." },
           { id: 4, name: "Jilguero de Montaña", scientific: "Myadestes occidentalis", category: "fauna", image: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?auto=format&fit=crop&w=400&q=80", desc: "Ave de melodioso canto que habita en el follaje del bosque de niebla." },
           { id: 5, name: "Rana de Cristal", scientific: "Hyalinobatrachium spp.", category: "fauna", image: "https://images.unsplash.com/photo-1533038590840-1cde6e668a91?auto=format&fit=crop&w=400&q=80", desc: "Pequeño anfibio de piel traslúcida nativo de hojas húmedas en la montaña." },
@@ -766,73 +766,11 @@
     };
 
     
-const rareSpeciesList = [
-    {
-        id: 101,
-        id_especie: 22,
-        name: "Viejo de Monte / Taira",
-        scientific: "Eira barbara",
-        category: "rare",
-        image: "https://images.unsplash.com/photo-1564349683136-77e08dba1ef9?auto=format&fit=crop&w=400&q=80",
-        desc: "Raro y escurridizo mamífero maderero de la sierra misanteca.",
-        discovered: false
-    },
-    {
-        id: 102,
-        id_especie: 23,
-        name: "Puma de Montaña",
-        scientific: "Puma concolor",
-        category: "rare",
-        image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=400&q=80",
-        desc: "El felino cumbre de la Sierra Madre Oriental cerca de Misantla.",
-        discovered: false
-    },
-    {
-        id: 103,
-        id_especie: 24,
-        name: "Carpintero Real",
-        scientific: "Campephilus guatemalensis",
-        category: "rare",
-        image: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?auto=format&fit=crop&w=400&q=80",
-        desc: "Mítica ave de cresta roja que habita únicamente en los troncos más antiguos.",
-        discovered: false
-    },
-    {
-        id: 104,
-        id_especie: 25,
-        name: "Ocelote Nocturno",
-        scientific: "Leopardus pardalis",
-        category: "rare",
-        image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=400&q=80",
-        desc: "Felino amenazado de hábitos casi exclusivamente nocturnos.",
-        discovered: false
-    },
-    {
-        id: 105,
-        id_especie: 26,
-        name: "Hongo Sombrerillo Rojo",
-        scientific: "Amanita muscaria var.",
-        category: "rare",
-        image: "https://images.unsplash.com/photo-1504470695779-75300268aa0e?auto=format&fit=crop&w=400&q=80",
-        desc: "Extraordinario y raro hongo de intenso color rojo que brota muy raramente.",
-        discovered: false
-    },
-    {
-        id: 106,
-        id_especie: 27,
-        name: "Orquídea Vainilla Silvestre",
-        scientific: "Vanilla planifolia",
-        category: "rare",
-        image: "https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?auto=format&fit=crop&w=400&q=80",
-        desc: "La genuina orquídea trepadora silvestre origen de la vainilla natural.",
-        discovered: false
-    }
-];
-
+let rareSpeciesList = [];
 
     let currentHabitatKey = 'sierra';
     let habitatsDesdeAPI = {};
-    let currentHabitat = database.sierra;
+    let currentHabitat = null;
     let currentFilter = 'all';
     let currentRareAnimal = null;
     let usuarioActual = null;
@@ -865,8 +803,13 @@ const rareSpeciesList = [
     });
 
     
-    function selectHabitat(habitatKey) {
-          currentHabitat = habitatsDesdeAPI[habitatKey] || database[habitatKey];
+      function selectHabitat(habitatKey) {
+         currentHabitat = habitatsDesdeAPI[habitatKey];
+
+          if (!currentHabitat) {
+             console.error('El hábitat no está disponible en la API:', habitatKey);
+             return;
+          }
 
           document.getElementById('habitat-title').innerText = currentHabitat.title;
           document.getElementById('habitat-desc').innerText = currentHabitat.description;
@@ -884,7 +827,7 @@ const rareSpeciesList = [
       if (currentFilter === 'rare') {
         listToRender = rareSpeciesList.filter(item => item.discovered);
         if (listToRender.length === 0) {
-          grid.innerHTML = '<p style="font-size: 0.85rem; color: #757575; grid-column: 1/-1;">Aún no has dibujado ninguna especie rara. ¡Explora el mapa y estate atento a los avistamientos para indexarlas en tu Misantla-Dex!</p>';
+          grid.innerHTML = '<p style="font-size: 0.85rem; color: #757575; grid-column: 1/-1;">Aún no has dibujado ninguna especie rara. ¡Explora el mapa y estate     atento a los avistamientos para indexarlas en tu Misantla-Dex!</p>';
           return;
         }
       } else {
@@ -1164,11 +1107,35 @@ const rareSpeciesList = [
     async function probarCargaAPI() {
     try {
         const respuestaHabitats = await fetch(API_URL + '/api/habitats');
+
+        if (!respuestaHabitats.ok) {
+            throw new Error('No se pudieron cargar los hábitats');
+        }
+
         const habitats = await respuestaHabitats.json();
 
         const respuestaEspecies = await fetch(API_URL + '/api/especies');
+
+        if (!respuestaEspecies.ok) {
+           throw new Error('No se pudieron cargar las especies');
+        }
+
         const especies = await respuestaEspecies.json();
 	const especiesAdaptadas = especies.map(adaptarEspecie);
+        rareSpeciesList = especiesAdaptadas
+          .filter(especie => especie.category === 'rare')
+          .map(especie => ({
+              ...especie,
+              discovered: false
+          }));
+        console.table(rareSpeciesList.map(especie => ({
+   		 id: especie.id_especie,
+   		 nombre: especie.name,
+   		 categoria: especie.category,
+    		descubierto: especie.discovered
+	})));
+
+        console.log('Especies raras cargadas desde MariaDB:', rareSpeciesList);
         console.table(especiesAdaptadas.slice(0, 3));
         const especiesPorHabitat = agruparEspeciesPorHabitat(especiesAdaptadas);
         const habitatsAdaptados = habitats.map(habitat =>
@@ -1201,8 +1168,6 @@ const rareSpeciesList = [
         console.error('Error al conectar con la API:', error);
     }
 }
-
-probarCargaAPI();
 
 function adaptarEspecie(especie) {
     return {
@@ -1243,9 +1208,6 @@ function adaptarHabitat(habitat, especiesPorHabitat) {
         species: especiesPorHabitat[habitat.id_habitat] || []
     };
 }
-
-    selectHabitat('sierra');
-    document.getElementById('sierra').classList.add('active');
     
 async function registrarUsuario() {
     const nombre_usuario = document.getElementById('nombre-usuario').value.trim();
@@ -1413,9 +1375,12 @@ async function restaurarSesion() {
     }
 }
 
-restaurarSesion();
+async function iniciarAplicacion() {
+    await probarCargaAPI();
+    await restaurarSesion();
+}
 
-
+iniciarAplicacion();
   </script>
 </body>
 </html>
