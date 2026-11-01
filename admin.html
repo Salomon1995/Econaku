@@ -111,6 +111,46 @@
         #habitats-especie {
             grid-column: 1 / -1;
         }
+        /* Formulario de hábitats */
+        #formularioHabitat {
+  	 	 margin-top: 20px;
+    	 	 padding: 25px;
+    	 	 border: 1px solid #dce7dd;
+    		 border-radius: 12px;
+    		 background: #ffffff;
+	}
+
+	#formularioHabitat h3 {
+   		 margin-top: 0;
+    		color: #315c43;
+    		margin-bottom: 20px;
+	}
+
+	#formularioHabitat label {
+  		display: block;
+    		font-weight: bold;
+    		margin: 12px 0 7px;
+    		color: #315c43;
+	}
+
+	#formularioHabitat input,
+	#formularioHabitat textarea {
+   		width: 100%;
+    		padding: 11px;
+    		border: 1px solid #cbd8ce;
+    		border-radius: 7px;
+    		font-size: 15px;
+    		font-family: Arial, sans-serif;
+	}
+
+	#formularioHabitat textarea {
+   	 	min-height: 100px;
+    		resize: vertical;
+	}
+
+	#formularioHabitat .acciones {
+    		margin-top: 18px;
+	}
 
        /* Adaptación a celulares */
         @media (max-width: 600px) {
@@ -710,6 +750,7 @@ async function consultarHabitats() {
         }
 
         const habitats = await respuesta.json();
+        console.log('Hábitats recibidos:', habitats);
 
         contenedor.innerHTML = '';
 
