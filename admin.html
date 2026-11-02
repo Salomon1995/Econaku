@@ -164,6 +164,109 @@
                 grid-column: 1;
             }
          }
+         
+/* ===== GESTIÓN DE ADMINISTRADORES ===== */
+
+         .admin-formulario {
+    		margin-top: 20px;
+    		padding: 20px;
+   	 	background-color: #f7faf6;
+    		border: 1px solid #dce8dc;
+    		border-radius: 12px;
+	 }
+
+         .admin-formulario h3 {
+                color: #315c43;
+    		margin-top: 0;
+    		margin-bottom: 18px;
+	}
+
+	.admin-formulario label {
+    		display: block;
+    		margin-top: 12px;
+    		margin-bottom: 6px;
+    		font-weight: 600;
+    		color: #315c43;
+	}
+
+	.admin-formulario input {
+    		width: 100%;
+    		padding: 11px;
+    		border: 1px solid #cbd8cc;
+    		border-radius: 8px;
+    		box-sizing: border-box;
+    		font-size: 15px;
+	}
+
+	.admin-formulario input:focus {
+    		outline: none;
+    		border-color: #477b58;
+    		box-shadow: 0 0 0 3px rgba(71, 123, 88, 0.15);
+	}
+
+	#lista-administradores {
+    		margin-top: 25px;
+	}
+
+	#lista-administradores h3 {
+    		color: #315c43;
+    		margin-bottom: 15px;
+	}
+
+	.tarjeta-admin {
+    		background: #ffffff;
+    		border: 1px solid #dce8dc;
+    		border-left: 5px solid #477b58;
+    		border-radius: 10px;
+    		padding: 16px;
+    		margin-bottom: 12px;
+    		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+	}
+
+	.tarjeta-admin h4 {
+    		color: #315c43;
+    		margin: 0 0 8px;
+	}
+
+	.tarjeta-admin p {
+    		color: #59675c;
+    		margin: 5px 0;
+	}
+
+	.admin-acciones {
+    		display: flex;
+    		flex-wrap: wrap;
+    		gap: 10px;
+    		margin-top: 15px;
+	}
+
+	.admin-acciones button {
+    		flex: 1;
+    		min-width: 140px;
+	}
+
+	.btn-admin-eliminar {
+    		background-color: #b94a48;
+	}
+
+	.btn-admin-eliminar:hover {
+    		background-color: #923936;
+	}
+
+	@media (max-width: 600px) {
+    		.admin-formulario {
+        		padding: 15px;
+    		}
+
+    		.admin-acciones {
+        		flex-direction: column;
+    		}
+
+    		.admin-acciones button {
+        		width: 100%;
+    		}
+	}
+
     </style>
 </head>
 
@@ -305,40 +408,84 @@
            <div id="listaHabitats"></div>
         </section>
 
-       <section class="panel">
-    <h2>Gestión de administradores</h2>
+       
+<section class="panel" id="panel-administradores">
+    <h2>Administradores</h2>
 
     <div class="acciones">
         <button type="button" onclick="mostrarFormularioAdmin()">
-            Crear administrador
+            Nuevo administrador
+        </button>
+
+        <button type="button" onclick="consultarAdministradores()">
+            Consultar administradores
         </button>
     </div>
 
-    <form id="formulario-admin" style="display:none;"
+    <!-- Formulario para crear administradores -->
+    <form id="formulario-admin"
+          class="admin-formulario"
+          style="display: none;"
           onsubmit="crearAdministrador(event)">
 
-        <h3>Registrar nuevo administrador</h3>
+        <h3>Registrar administrador</h3>
 
         <label for="nombre-admin">Nombre de usuario:</label>
-        <input type="text" id="nombre-admin" required>
+        <input type="text" id="nombre-admin" required minlength="3">
 
         <label for="password-admin">Contraseña:</label>
-        <input type="password" id="password-admin" required minlength="8">
+        <input type="password" id="password-admin"
+               required minlength="8">
 
         <div class="acciones">
             <button type="submit">Crear cuenta</button>
-
             <button type="button" onclick="cancelarFormularioAdmin()">
+                Cancelar
+            </button>
+        </div>
+    </form>
+
+    <!-- Lista de administradores -->
+    <div id="lista-administradores" style="display: none;">
+        <h3>Administradores registrados</h3>
+        <div id="contenedor-administradores"></div>
+    </div>
+
+    <!-- Formulario para cambiar contraseña -->
+    <form id="formulario-password-admin"
+          class="admin-formulario"
+          style="display: none;"
+          onsubmit="cambiarPasswordAdmin(event)">
+
+        <h3>Modificar contraseña</h3>
+
+        <input type="hidden" id="id-admin-password">
+
+        <label for="nueva-password-admin">Nueva contraseña:</label>
+        <input type="password" id="nueva-password-admin"
+               required minlength="8">
+
+        <label for="confirmar-password-admin">
+            Confirmar contraseña:
+        </label>
+        <input type="password" id="confirmar-password-admin"
+               required minlength="8">
+
+        <div class="acciones">
+            <button type="submit">Guardar contraseña</button>
+            <button type="button" onclick="cancelarPasswordAdmin()">
                 Cancelar
             </button>
         </div>
     </form>
 </section>
 
+
     </main>
 
 <script>
    const API_URL = 'https://econaku.onrender.com';
+   let idAdministradorActual = null;
    let idEspecieEditando = null;
     document.getElementById('archivo-imagen').addEventListener('change', async function () {
     const archivo = this.files[0];
@@ -942,11 +1089,14 @@ function mostrarFormularioAdmin() {
         return;
     }
 
+    // Ocultar los otros apartados
+    document.getElementById('lista-administradores').style.display = 'none';
+    document.getElementById('formulario-password-admin').style.display = 'none';
+
     formulario.reset();
     formulario.style.display = 'block';
     formulario.scrollIntoView({ behavior: 'smooth' });
 }
-
 function cancelarFormularioAdmin() {
     document.getElementById('formulario-admin').reset();
     document.getElementById('formulario-admin').style.display = 'none';
@@ -989,6 +1139,197 @@ async function crearAdministrador(event) {
     }
 }
 
+async function consultarAdministradores() {
+    const contenedor = document.getElementById('lista-administradores');
+    const lista = document.getElementById('contenedor-administradores');
+
+    if (contenedor.style.display === 'block') {
+        contenedor.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('formulario-admin').style.display = 'none';
+    document.getElementById('formulario-password-admin').style.display = 'none';
+
+    contenedor.style.display = 'block';
+    lista.textContent = 'Consultando administradores...';
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/admin/usuarios`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        const administradores = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(
+                administradores.mensaje ||
+                administradores.error ||
+                'No se pudieron consultar los administradores.'
+            );
+        }
+
+        lista.innerHTML = '';
+
+        if (!Array.isArray(administradores) || administradores.length === 0) {
+            lista.textContent = 'No hay administradores registrados.';
+            return;
+        }
+
+        administradores.forEach(admin => {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'tarjeta-admin';
+
+            const nombre = document.createElement('h4');
+            nombre.textContent = admin.nombre_usuario;
+
+            const identificador = document.createElement('p');
+            identificador.textContent = `ID: ${admin.id_usuario}`;
+
+            const rol = document.createElement('p');
+            rol.textContent = `Rol: ${admin.rol}`;
+
+            const acciones = document.createElement('div');
+            acciones.className = 'admin-acciones';
+
+            const btnPassword = document.createElement('button');
+            btnPassword.type = 'button';
+            btnPassword.textContent = 'Cambiar contraseña';
+            btnPassword.addEventListener('click', () => {
+                mostrarFormularioPassword(admin);
+            });
+
+            const btnEliminar = document.createElement('button');
+            btnEliminar.type = 'button';
+            btnEliminar.textContent = 'Eliminar administrador';
+            btnEliminar.className = 'btn-admin-eliminar';
+
+            if (Number(admin.id_usuario) === Number(idAdministradorActual)) {
+                btnEliminar.disabled = true;
+                btnEliminar.textContent = 'Tu cuenta actual';
+            } else {
+                btnEliminar.addEventListener('click', () => {
+                    eliminarAdministrador(admin);
+                });
+            }
+
+            acciones.append(btnPassword, btnEliminar);
+            tarjeta.append(nombre, identificador, rol, acciones);
+            lista.appendChild(tarjeta);
+        });
+
+    } catch (error) {
+        console.error('Error al consultar administradores:', error);
+        lista.textContent = error.message;
+    }
+}
+
+function mostrarFormularioPassword(admin) {
+    document.getElementById('formulario-admin').style.display = 'none';
+    document.getElementById('lista-administradores').style.display = 'none';
+
+    const formulario = document.getElementById('formulario-password-admin');
+
+    formulario.reset();
+
+    document.getElementById('id-admin-password').value = admin.id_usuario;
+
+    formulario.style.display = 'block';
+    formulario.scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelarPasswordAdmin() {
+    document.getElementById('formulario-password-admin').reset();
+    document.getElementById('formulario-password-admin').style.display = 'none';
+}
+
+async function cambiarPasswordAdmin(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('id-admin-password').value;
+    const password = document.getElementById('nueva-password-admin').value;
+    const confirmar = document.getElementById('confirmar-password-admin').value;
+
+    if (password.length < 8) {
+        alert('La contraseña debe tener al menos 8 caracteres.');
+        return;
+    }
+
+    if (password !== confirmar) {
+        alert('Las contraseñas no coinciden.');
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(
+            `${API_URL}/api/admin/usuarios/${id}/password`,
+            {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password })
+            }
+        );
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(
+                resultado.mensaje ||
+                resultado.error ||
+                'No se pudo cambiar la contraseña.'
+            );
+        }
+
+        alert(resultado.mensaje || 'Contraseña actualizada correctamente.');
+
+        cancelarPasswordAdmin();
+
+    } catch (error) {
+        console.error('Error al cambiar contraseña:', error);
+        alert(error.message);
+    }
+}
+
+async function eliminarAdministrador(admin) {
+    const confirmar = confirm(
+        `¿Estás seguro de eliminar al administrador "${admin.nombre_usuario}"?`
+    );
+
+    if (!confirmar) return;
+
+    try {
+        const respuesta = await fetch(
+            `${API_URL}/api/admin/usuarios/${admin.id_usuario}`,
+            {
+                method: 'DELETE',
+                credentials: 'include'
+            }
+        );
+
+        const resultado = await respuesta.json();
+
+        if (!respuesta.ok) {
+            throw new Error(
+                resultado.mensaje ||
+                resultado.error ||
+                'No se pudo eliminar el administrador.'
+            );
+        }
+
+        alert(resultado.mensaje || 'Administrador eliminado correctamente.');
+
+        await consultarAdministradores(true);
+
+    } catch (error) {
+        console.error('Error al eliminar administrador:', error);
+        alert(error.message);
+    }
+}
+
 async function verificarAdministrador() {
         const panel = document.querySelector('main');
         panel.style.display = 'none';
@@ -1015,6 +1356,7 @@ async function verificarAdministrador() {
 
             document.querySelector('.panel h2').textContent =
                 `Bienvenido, ${datos.usuario.nombre_usuario}`;
+            idAdministradorActual = datos.usuario.id_usuario;
 
             panel.style.display = 'block';
 

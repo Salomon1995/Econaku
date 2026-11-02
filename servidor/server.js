@@ -808,6 +808,145 @@ app.post('/api/admin/usuarios', soloAdministrador, async (req, res) => {
     }
 });
 
+app.get('/api/admin/usuarios', soloAdministrador, async (req, res) => {
+    try {
+        const administradores = await pool.query(
+            `SELECT id_usuario, nombre_usuario, rol
+             FROM usuarios
+             WHERE rol = 'admin'
+             ORDER BY id_usuario`
+        );
+
+        res.json(administradores);
+
+    } catch (error) {
+        console.error('Error al consultar administradores:', error.message);
+
+        res.status(500).json({
+            error: 'No se pudieron consultar los administradores'
+        });
+    }
+});
+
+app.put('/api/admin/usuarios/:id/password', soloAdministrador, async (req, res) => {
+    const id = Number(req.params.id);
+    const { password } = req.body;
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            error: 'El identificador no es válido'
+        });
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({
+            error: 'La contraseña debe tener al menos 8 caracteres'
+        });
+    }
+
+    try {
+        const hash = await bcrypt.hash(password, 12);
+
+        const resultado = await pool.query(
+            `UPDATE usuarios
+             SET password_hash = ?
+             WHERE id_usuario = ? AND rol = 'admin'`,
+            [hash, id]
+        );
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'El administrador no existe'
+            });
+        }
+
+        res.json({
+            mensaje: 'Contraseña actualizada correctamente'
+        });
+
+    } catch (error) {
+        console.error('Error al modificar contraseña:', error.message);
+
+        res.status(500).json({
+            error: 'No se pudo modificar la contraseña'
+        });
+    }
+});
+
+app.delete('/api/admin/usuarios/:id', soloAdministrador, async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            error: 'El identificador no es válido'
+        });
+    }
+
+    if (id === Number(req.session.usuario.id_usuario)) {
+        return res.status(403).json({
+            error: 'No puedes eliminar tu propia cuenta'
+        });
+    }
+
+    let conexionDB;
+
+    try {
+        conexionDB = await conexion.getConnection();
+        await conexionDB.beginTransaction();
+
+        const [administradores] = await conexionDB.query(
+            `SELECT id_usuario
+             FROM usuarios
+             WHERE rol = 'admin'
+             FOR UPDATE`
+        );
+
+        if (administradores.length <= 1) {
+            await conexionDB.rollback();
+
+            return res.status(409).json({
+                error: 'No puedes eliminar al último administrador'
+            });
+        }
+
+        const [resultado] = await conexionDB.query(
+            `DELETE FROM usuarios
+             WHERE id_usuario = ? AND rol = 'admin'`,
+            [id]
+        );
+
+        if (resultado.affectedRows === 0) {
+            await conexionDB.rollback();
+
+            return res.status(404).json({
+                error: 'El administrador no existe'
+            });
+        }
+
+        await conexionDB.commit();
+
+        res.json({
+            mensaje: 'Administrador eliminado correctamente'
+        });
+
+    } catch (error) {
+        if (conexionDB) {
+            await conexionDB.rollback();
+        }
+
+        console.error('Error al eliminar administrador:', error.message);
+
+        res.status(500).json({
+            error: 'No se pudo eliminar el administrador'
+        });
+
+    } finally {
+        if (conexionDB) {
+            conexionDB.release();
+        }
+    }
+});
+
 app.post('/api/login', async (req, res) => {
     const { nombre_usuario, password } = req.body;
 
