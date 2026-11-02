@@ -245,14 +245,6 @@
     		min-width: 140px;
 	}
 
-	.btn-admin-eliminar {
-    		background-color: #b94a48;
-	}
-
-	.btn-admin-eliminar:hover {
-    		background-color: #923936;
-	}
-
 	@media (max-width: 600px) {
     		.admin-formulario {
         		padding: 15px;
@@ -485,7 +477,6 @@
 
 <script>
    const API_URL = 'https://econaku.onrender.com';
-   let idAdministradorActual = null;
    let idEspecieEditando = null;
     document.getElementById('archivo-imagen').addEventListener('change', async function () {
     const archivo = this.files[0];
@@ -1199,22 +1190,7 @@ async function consultarAdministradores() {
             btnPassword.addEventListener('click', () => {
                 mostrarFormularioPassword(admin);
             });
-
-            const btnEliminar = document.createElement('button');
-            btnEliminar.type = 'button';
-            btnEliminar.textContent = 'Eliminar administrador';
-            btnEliminar.className = 'btn-admin-eliminar';
-
-            if (Number(admin.id_usuario) === Number(idAdministradorActual)) {
-                btnEliminar.disabled = true;
-                btnEliminar.textContent = 'Tu cuenta actual';
-            } else {
-                btnEliminar.addEventListener('click', () => {
-                    eliminarAdministrador(admin);
-                });
-            }
-
-            acciones.append(btnPassword, btnEliminar);
+            acciones.append(btnPassword);
             tarjeta.append(nombre, identificador, rol, acciones);
             lista.appendChild(tarjeta);
         });
@@ -1294,42 +1270,6 @@ async function cambiarPasswordAdmin(event) {
     }
 }
 
-async function eliminarAdministrador(admin) {
-    const confirmar = confirm(
-        `¿Estás seguro de eliminar al administrador "${admin.nombre_usuario}"?`
-    );
-
-    if (!confirmar) return;
-
-    try {
-        const respuesta = await fetch(
-            `${API_URL}/api/admin/usuarios/${admin.id_usuario}`,
-            {
-                method: 'DELETE',
-                credentials: 'include'
-            }
-        );
-
-        const resultado = await respuesta.json();
-
-        if (!respuesta.ok) {
-            throw new Error(
-                resultado.mensaje ||
-                resultado.error ||
-                'No se pudo eliminar el administrador.'
-            );
-        }
-
-        alert(resultado.mensaje || 'Administrador eliminado correctamente.');
-
-        await consultarAdministradores(true);
-
-    } catch (error) {
-        console.error('Error al eliminar administrador:', error);
-        alert(error.message);
-    }
-}
-
 async function verificarAdministrador() {
         const panel = document.querySelector('main');
         panel.style.display = 'none';
@@ -1356,7 +1296,6 @@ async function verificarAdministrador() {
 
             document.querySelector('.panel h2').textContent =
                 `Bienvenido, ${datos.usuario.nombre_usuario}`;
-            idAdministradorActual = datos.usuario.id_usuario;
 
             panel.style.display = 'block';
 
